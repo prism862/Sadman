@@ -37,6 +37,7 @@ function AppContent() {
       
       {!showIntro && (
         <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-prism-mid">
+          <div className="scanline" />
           <Navbar />
           <main>
             <Suspense fallback={<PageLoader />}>

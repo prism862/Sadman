@@ -7,25 +7,8 @@ export default function Home() {
   return (
     <div className="relative min-h-screen pt-20 overflow-hidden">
       {/* Background Light Effects */}
-      <motion.div 
-        animate={{ 
-          scale: [1, 1.2, 1],
-          opacity: [0.1, 0.2, 0.1],
-          x: [0, 100, 0]
-        }}
-        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-0 left-1/4 w-[800px] h-[800px] bg-prism-mid/20 blur-[150px] rounded-full" 
-      />
-      <motion.div 
-        animate={{ 
-          scale: [1, 1.3, 1],
-          opacity: [0.1, 0.3, 0.1],
-          x: [0, -100, 0]
-        }}
-        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-        className="absolute bottom-0 right-1/4 w-[900px] h-[900px] bg-prism-end/20 blur-[180px] rounded-full" 
-      />
-      <div className="scanline opacity-30" />
+      <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-prism-mid/10 blur-[100px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-[700px] h-[700px] bg-prism-end/10 blur-[120px] rounded-full pointer-events-none" />
 
       <section className="relative max-w-7xl mx-auto px-6 pt-32 pb-40 flex flex-col items-center text-center">
         <motion.div
@@ -42,36 +25,24 @@ export default function Home() {
         </motion.div>
 
         <motion.h1
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 1.2, delay: 0.2 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
           className="text-7xl md:text-[10rem] font-display font-black tracking-[-0.05em] mb-12 leading-[0.85]"
         >
           PRISM <br />
           <span className="prism-text italic">QUALITY</span>
         </motion.h1>
 
-        {/* Animated Prism Hero Element */}
+        {/* Animated Prism Hero Element with Internal Lines */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1, delay: 0.4 }}
           className="relative mb-20"
         >
-          <motion.div
-            animate={{ 
-              rotateY: [0, 360],
-              y: [0, -20, 0]
-            }}
-            transition={{ 
-              rotateY: { duration: 12, repeat: Infinity, ease: "linear" },
-              y: { duration: 6, repeat: Infinity, ease: "easeInOut" }
-            }}
-            className="w-48 h-48 md:w-64 md:h-64 relative preserve-3d"
-          >
-            <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_0_40px_rgba(121,40,202,0.3)]">
+          <div className="w-48 h-48 md:w-64 md:h-64 relative flex items-center justify-center">
+            <svg viewBox="0 0 100 100" className="w-full h-full">
               <defs>
                 <linearGradient id="prism-hero-grad" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stopColor="#7928ca" stopOpacity="0.8" />
@@ -86,34 +57,57 @@ export default function Home() {
                 strokeWidth="0.5"
                 strokeOpacity="0.3"
               />
-              <path
+              {/* Animated Internal Lines */}
+              <motion.path
                 d="M50 10 L50 85"
+                stroke="white"
+                strokeWidth="0.5"
+                strokeOpacity="0.5"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: [0.2, 0.5, 0.2] }}
+                transition={{ 
+                  pathLength: { duration: 2, ease: "easeInOut" },
+                  opacity: { duration: 3, repeat: Infinity, ease: "easeInOut" }
+                }}
+              />
+              <motion.path
+                d="M50 10 L35 85"
                 stroke="white"
                 strokeWidth="0.2"
                 strokeOpacity="0.2"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 2.5, ease: "easeInOut", delay: 0.2 }}
               />
-            </svg>
-            
-            {/* Refraction Lines */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              {[...Array(4)].map((_, i) => (
-                <motion.div
+              <motion.path
+                d="M50 10 L65 85"
+                stroke="white"
+                strokeWidth="0.2"
+                strokeOpacity="0.2"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 2.5, ease: "easeInOut", delay: 0.4 }}
+              />
+              {/* Subtle Glow Lines */}
+              {[...Array(2)].map((_, i) => (
+                <motion.line
                   key={i}
-                  className="absolute w-full h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                  animate={{ 
-                    rotate: [0, 360],
-                    scale: [1, 1.8, 1],
-                    opacity: [0.1, 0.4, 0.1]
-                  }}
+                  x1="15" y1={85 - i * 8} x2="85" y2={85 - i * 8}
+                  stroke="white"
+                  strokeWidth="0.1"
+                  initial={{ opacity: 0, scaleX: 0 }}
+                  animate={{ opacity: [0, 0.2, 0], scaleX: [0, 1, 0] }}
                   transition={{ 
-                    duration: 7 + i, 
+                    duration: 5, 
                     repeat: Infinity, 
-                    ease: "linear" 
+                    delay: i * 2,
+                    ease: "easeInOut" 
                   }}
+                  className="origin-center"
                 />
               ))}
-            </div>
-          </motion.div>
+            </svg>
+          </div>
         </motion.div>
 
         <motion.p
@@ -196,7 +190,7 @@ export default function Home() {
             className="relative h-[700px] rounded-[3rem] overflow-hidden group cursor-pointer"
           >
             <img 
-              src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=1000" 
+              src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=1200" 
               alt="Model"
               className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
               referrerPolicy="no-referrer"
@@ -222,7 +216,7 @@ export default function Home() {
               className="relative flex-1 rounded-[3rem] overflow-hidden group cursor-pointer"
             >
               <img 
-                src="https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=1000" 
+                src="https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=800" 
                 alt="Model"
                 className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                 referrerPolicy="no-referrer"
@@ -245,7 +239,7 @@ export default function Home() {
               className="relative flex-1 rounded-[3rem] overflow-hidden group cursor-pointer"
             >
               <img 
-                src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&q=80&w=1000" 
+                src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&q=80&w=800" 
                 alt="Model"
                 className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                 referrerPolicy="no-referrer"

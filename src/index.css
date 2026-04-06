@@ -52,13 +52,14 @@
 }
 
 .scanline {
-  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.03), transparent);
-  height: 20vh;
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.01), transparent);
+  height: 10vh;
   width: 100%;
   position: fixed;
   top: 0;
   left: 0;
   pointer-events: none;
   z-index: 50;
-  animation: scanline 12s linear infinite;
+  animation: scanline 20s linear infinite;
+  opacity: 0.1;
 }
