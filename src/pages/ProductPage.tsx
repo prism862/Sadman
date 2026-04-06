@@ -50,6 +50,8 @@ export default function ProductPage() {
                 src={product.spectrumImage} 
                 alt="Spectrum Effect" 
                 className="w-full h-full object-cover mix-blend-screen opacity-80"
+                loading="eager"
+                decoding="async"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-prism-start/20 to-transparent" />
               <div className="absolute top-6 left-6">
@@ -70,6 +72,8 @@ export default function ProductPage() {
                 alt={product.title} 
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
+                loading={i === 0 ? "eager" : "lazy"}
+                decoding="async"
               />
             </motion.div>
           ))}

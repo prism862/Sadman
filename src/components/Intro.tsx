@@ -33,7 +33,7 @@ export default function Intro({ onComplete }: { onComplete: () => void }) {
               }}
               className="w-48 h-48 md:w-64 md:h-64 relative preserve-3d"
             >
-              <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_0_30px_rgba(121,40,202,0.4)]">
+              <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_0_30px_rgba(121,40,202,0.4)] will-change-transform">
                 <defs>
                   <linearGradient id="prism-grad" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#7928ca" stopOpacity="0.8" />
