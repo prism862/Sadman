@@ -19,7 +19,7 @@ export default function Navbar() {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 transition-all duration-300">
+    <nav className="fixed top-0 left-0 w-full z-50 transition-all duration-300 will-change-transform">
       <div className="absolute inset-0 bg-black/20 backdrop-blur-md border-b border-white/5" />
       
       <div className="relative max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">

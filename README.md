@@ -14,17 +14,19 @@ An aesthetic, high-end clothing brand website with smooth animations, shop funct
 2. Install dependencies: `npm install`
 3. Start the dev server: `npm run dev`
 
-## Deploying to GitHub Pages
-This project is configured for easy deployment to GitHub Pages.
+## Deploying to Vercel
+This project is optimized for Vercel deployment with a `vercel.json` configuration.
 
 1. **Export to GitHub:** Use the "Export to GitHub" feature in the AI Studio Settings menu.
-2. **Configure GitHub Pages:**
-   - Go to your repository settings on GitHub.
-   - Navigate to **Pages**.
-   - Under **Build and deployment**, set **Source** to **GitHub Actions** (recommended) or **Deploy from a branch**.
-3. **Manual Deployment:**
-   - Run `npm run deploy` from your local terminal. This will build the project and push the `dist` folder to a `gh-pages` branch.
-   - In GitHub settings, set the branch to `gh-pages`.
+2. **Connect to Vercel:**
+   - Go to [Vercel.com](https://vercel.com).
+   - Log in with GitHub.
+   - Click **"Add New Project"** and select your `prism-clothing` repository.
+3. **Deploy:** Click **"Deploy"**. Vercel will automatically detect the Vite project and use the `vercel.json` for SPA routing and caching.
+
+## Deploying to GitHub Pages
+This project is also configured for GitHub Pages.
+...
 
 ## SPA Routing on GitHub Pages
 To handle React Router's SPA routing, the build process automatically copies `index.html` to `404.html`. This ensures that refreshing the page on a sub-route (like `/shop`) works correctly.
