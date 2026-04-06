@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  
+  --color-prism-start: #7928ca;
+  --color-prism-mid: #0070f3;
+  --color-prism-end: #ffffff;
+}
+
+@layer base {
+  body {
+    @apply bg-[#050505] text-white selection:bg-prism-mid selection:text-white overflow-x-hidden;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-black;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-white/10 rounded-full hover:bg-white/20 transition-colors;
+  }
+}
+
+.glass {
+  @apply bg-white/[0.03] backdrop-blur-2xl border border-white/10;
+}
+
+.prism-text {
+  @apply bg-gradient-to-r from-prism-start via-prism-mid to-prism-end bg-clip-text text-transparent;
+}
+
+.prism-glow {
+  box-shadow: 0 0 40px rgba(121, 40, 202, 0.2);
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.scanline {
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.03), transparent);
+  height: 20vh;
+  width: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 50;
+  animation: scanline 12s linear infinite;
+}
