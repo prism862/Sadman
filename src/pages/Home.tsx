@@ -72,42 +72,6 @@ export default function Home() {
                   opacity: { duration: 3, repeat: Infinity, ease: "easeInOut" }
                 }}
               />
-              <motion.path
-                d="M50 10 L35 85"
-                stroke="white"
-                strokeWidth="0.2"
-                strokeOpacity="0.2"
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ duration: 2.5, ease: "easeInOut", delay: 0.2 }}
-              />
-              <motion.path
-                d="M50 10 L65 85"
-                stroke="white"
-                strokeWidth="0.2"
-                strokeOpacity="0.2"
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ duration: 2.5, ease: "easeInOut", delay: 0.4 }}
-              />
-              {/* Subtle Glow Lines */}
-              {[...Array(2)].map((_, i) => (
-                <motion.line
-                  key={i}
-                  x1="15" y1={85 - i * 8} x2="85" y2={85 - i * 8}
-                  stroke="white"
-                  strokeWidth="0.1"
-                  initial={{ opacity: 0, scaleX: 0 }}
-                  animate={{ opacity: [0, 0.2, 0], scaleX: [0, 1, 0] }}
-                  transition={{ 
-                    duration: 5, 
-                    repeat: Infinity, 
-                    delay: i * 2,
-                    ease: "easeInOut" 
-                  }}
-                  className="origin-center"
-                />
-              ))}
             </svg>
           </div>
         </motion.div>
@@ -259,6 +223,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+
       {/* Instagram CTA Section */}
       <section className="max-w-7xl mx-auto px-6 pb-20">
         <motion.div
@@ -293,7 +258,6 @@ export default function Home() {
           </div>
         </motion.div>
       </section>
-
     </div>
   );
-};
+}

@@ -12,11 +12,11 @@
 
 @layer base {
   html {
-    @apply overflow-y-hidden overflow-x-auto;
+    @apply overflow-y-auto overflow-x-hidden;
   }
 
   body {
-    @apply bg-[#050505] text-white selection:bg-prism-mid selection:text-white overflow-y-hidden overflow-x-auto;
+    @apply bg-[#050505] text-white selection:bg-prism-mid selection:text-white overflow-y-auto overflow-x-hidden;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
