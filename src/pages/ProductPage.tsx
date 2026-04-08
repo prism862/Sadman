@@ -6,11 +6,12 @@ import { useApp } from '../AppContext';
 import { formatPrice, cn } from '../lib/utils';
 import { fadeInUp, staggerContainer, staggerItem, hoverScale } from '../constants/animations';
 import SmoothImage from '../components/SmoothImage';
+import RecentlyViewed from '../components/RecentlyViewed';
 
 export default function ProductPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { products, addToCart, toggleWishlist, isInWishlist } = useApp();
+  const { products, addToCart, toggleWishlist, isInWishlist, addToRecentlyViewed } = useApp();
   const product = products.find(p => p.id === id);
   const [selectedSize, setSelectedSize] = useState('');
   const [showSizeGuide, setShowSizeGuide] = useState(false);
@@ -45,7 +46,10 @@ export default function ProductPage() {
 
   React.useEffect(() => {
     window.scrollTo(0, 0);
-  }, [id]);
+    if (id) {
+      addToRecentlyViewed(id);
+    }
+  }, [id, addToRecentlyViewed]);
 
   if (!product) return <div className="py-40 text-center">Product not found.</div>;
 
@@ -185,9 +189,14 @@ export default function ProductPage() {
                 product.stockCount !== undefined && (
                   <span className={cn(
                     "px-3 py-1 glass border-white/10 text-[10px] font-bold uppercase tracking-widest rounded-full",
-                    product.stockCount < 5 ? "text-orange-400 border-orange-400/30" : "text-white/40"
+                    product.stockCount === 0 ? "text-red-500 border-red-500/30" :
+                    product.stockCount < 3 ? "text-red-400 border-red-400/30 animate-pulse" :
+                    product.stockCount < 10 ? "text-orange-400 border-orange-400/30" : 
+                    "text-white/40"
                   )}>
-                    {product.stockCount} Pieces Left
+                    {product.stockCount === 0 ? "Out of Stock" :
+                     product.stockCount < 3 ? "Low Stock: Only " + product.stockCount + " Left" :
+                     product.stockCount + " Pieces Left"}
                   </span>
                 )
               )}
@@ -455,6 +464,8 @@ export default function ProductPage() {
           </div>
         </motion.div>
       </section>
+
+      <RecentlyViewed />
 
       {/* Sizing Guide Modal */}
       <AnimatePresence>

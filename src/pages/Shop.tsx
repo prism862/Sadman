@@ -6,6 +6,7 @@ import { formatPrice, cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
 import { fadeInUp, staggerContainer, staggerItem, hoverScale } from '../constants/animations';
 import SmoothImage from '../components/SmoothImage';
+import RecentlyViewed from '../components/RecentlyViewed';
 
 export default function Shop() {
   const { products, toggleWishlist, isInWishlist } = useApp();
@@ -172,6 +173,8 @@ export default function Shop() {
             <p className="text-white/30 font-display text-2xl">No pieces found in this spectrum.</p>
           </div>
         )}
+
+        <RecentlyViewed />
       </div>
     </div>
   );

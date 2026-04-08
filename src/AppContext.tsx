@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Product, CartItem, Order } from './types';
 import { initialProducts } from './data/initialProducts';
 
@@ -6,12 +6,14 @@ interface AppContextType {
   products: Product[];
   cart: CartItem[];
   wishlist: Product[];
+  recentlyViewed: string[];
   orders: Order[];
   addToCart: (product: Product, size: string) => void;
   removeFromCart: (id: string, size: string) => void;
   clearCart: () => void;
   toggleWishlist: (product: Product) => void;
   isInWishlist: (id: string) => boolean;
+  addToRecentlyViewed: (productId: string) => void;
   addOrder: (order: Order) => void;
   addProduct: (product: Product) => void;
   updateProduct: (product: Product) => void;
@@ -34,6 +36,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem('prism_wishlist');
     return saved ? JSON.parse(saved) : [];
   });
+  const [recentlyViewed, setRecentlyViewed] = useState<string[]>(() => {
+    const saved = localStorage.getItem('prism_recently_viewed');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [orders, setOrders] = useState<Order[]>(() => {
     const saved = localStorage.getItem('prism_orders');
     return saved ? JSON.parse(saved) : [];
@@ -52,10 +58,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [wishlist]);
 
   useEffect(() => {
+    localStorage.setItem('prism_recently_viewed', JSON.stringify(recentlyViewed));
+  }, [recentlyViewed]);
+
+  useEffect(() => {
     localStorage.setItem('prism_orders', JSON.stringify(orders));
   }, [orders]);
 
-  const addToCart = (product: Product, size: string) => {
+  const addToCart = useCallback((product: Product, size: string) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id && item.selectedSize === size);
       if (existing) {
@@ -67,15 +77,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       return [...prev, { ...product, selectedSize: size, quantity: 1 }];
     });
-  };
+  }, []);
 
-  const removeFromCart = (id: string, size: string) => {
+  const removeFromCart = useCallback((id: string, size: string) => {
     setCart(prev => prev.filter(item => !(item.id === id && item.selectedSize === size)));
-  };
+  }, []);
 
-  const clearCart = () => setCart([]);
+  const clearCart = useCallback(() => setCart([]), []);
 
-  const toggleWishlist = (product: Product) => {
+  const toggleWishlist = useCallback((product: Product) => {
     setWishlist(prev => {
       const exists = prev.find(p => p.id === product.id);
       if (exists) {
@@ -83,27 +93,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       return [...prev, product];
     });
-  };
+  }, []);
 
-  const isInWishlist = (id: string) => wishlist.some(p => p.id === id);
+  const isInWishlist = useCallback((id: string) => wishlist.some(p => p.id === id), [wishlist]);
 
-  const addOrder = (order: Order) => {
+  const addToRecentlyViewed = useCallback((productId: string) => {
+    setRecentlyViewed(prev => {
+      const filtered = prev.filter(id => id !== productId);
+      return [productId, ...filtered].slice(0, 10);
+    });
+  }, []);
+
+  const addOrder = useCallback((order: Order) => {
     setOrders(prev => [order, ...prev]);
     clearCart();
-  };
+  }, [clearCart]);
 
-  const addProduct = (product: Product) => setProducts(prev => [...prev, product]);
-  const updateProduct = (product: Product) => setProducts(prev => prev.map(p => p.id === product.id ? product : p));
-  const deleteProduct = (id: string) => setProducts(prev => prev.filter(p => p.id !== id));
-  const updateOrderStatus = (orderId: string, status: Order['status']) => {
+  const addProduct = useCallback((product: Product) => setProducts(prev => [...prev, product]), []);
+  const updateProduct = useCallback((product: Product) => setProducts(prev => prev.map(p => p.id === product.id ? product : p)), []);
+  const deleteProduct = useCallback((id: string) => setProducts(prev => prev.filter(p => p.id !== id)), []);
+  const updateOrderStatus = useCallback((orderId: string, status: Order['status']) => {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
-  };
+  }, []);
 
   return (
     <AppContext.Provider value={{
-      products, cart, wishlist, orders,
+      products, cart, wishlist, recentlyViewed, orders,
       addToCart, removeFromCart, clearCart,
-      toggleWishlist, isInWishlist,
+      toggleWishlist, isInWishlist, addToRecentlyViewed,
       addOrder, addProduct, updateProduct, deleteProduct,
       updateOrderStatus
     }}>
