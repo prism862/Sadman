@@ -72,6 +72,60 @@ export default function Home() {
                   opacity: { duration: 3, repeat: Infinity, ease: "easeInOut" }
                 }}
               />
+              <motion.path
+                d="M50 10 L35 85"
+                stroke="white"
+                strokeWidth="0.2"
+                strokeOpacity="0.2"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 2.5, ease: "easeInOut", delay: 0.2 }}
+              />
+              <motion.path
+                d="M50 10 L65 85"
+                stroke="white"
+                strokeWidth="0.2"
+                strokeOpacity="0.2"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 2.5, ease: "easeInOut", delay: 0.4 }}
+              />
+              <motion.path
+                d="M50 10 L25 85"
+                stroke="white"
+                strokeWidth="0.1"
+                strokeOpacity="0.1"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 3, ease: "easeInOut", delay: 0.6 }}
+              />
+              <motion.path
+                d="M50 10 L75 85"
+                stroke="white"
+                strokeWidth="0.1"
+                strokeOpacity="0.1"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 3, ease: "easeInOut", delay: 0.8 }}
+              />
+              {/* Subtle Glow Lines */}
+              {[...Array(4)].map((_, i) => (
+                <motion.line
+                  key={i}
+                  x1="15" y1={85 - i * 6} x2="85" y2={85 - i * 6}
+                  stroke="white"
+                  strokeWidth="0.1"
+                  initial={{ opacity: 0, scaleX: 0 }}
+                  animate={{ opacity: [0, 0.2, 0], scaleX: [0, 1, 0] }}
+                  transition={{ 
+                    duration: 4, 
+                    repeat: Infinity, 
+                    delay: i * 1,
+                    ease: "easeInOut" 
+                  }}
+                  className="origin-center"
+                />
+              ))}
             </svg>
           </div>
         </motion.div>

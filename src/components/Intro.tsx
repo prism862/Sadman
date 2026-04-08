@@ -15,7 +15,7 @@ export default function Intro({ onComplete }: { onComplete: () => void }) {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (!isTapped) handleTap();
-    }, 5000);
+    }, 3000);
     return () => clearTimeout(timer);
   }, [isTapped]);
 
@@ -66,7 +66,7 @@ export default function Intro({ onComplete }: { onComplete: () => void }) {
                   }}
                 />
                 <motion.path
-                  d="M50 10 L30 85"
+                  d="M50 10 L35 85"
                   stroke="white"
                   strokeWidth="0.2"
                   strokeOpacity="0.2"
@@ -75,7 +75,7 @@ export default function Intro({ onComplete }: { onComplete: () => void }) {
                   transition={{ duration: 2.5, ease: "easeInOut", delay: 0.2 }}
                 />
                 <motion.path
-                  d="M50 10 L70 85"
+                  d="M50 10 L65 85"
                   stroke="white"
                   strokeWidth="0.2"
                   strokeOpacity="0.2"
@@ -83,11 +83,29 @@ export default function Intro({ onComplete }: { onComplete: () => void }) {
                   animate={{ pathLength: 1 }}
                   transition={{ duration: 2.5, ease: "easeInOut", delay: 0.4 }}
                 />
+                <motion.path
+                  d="M50 10 L25 85"
+                  stroke="white"
+                  strokeWidth="0.1"
+                  strokeOpacity="0.1"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 3, ease: "easeInOut", delay: 0.6 }}
+                />
+                <motion.path
+                  d="M50 10 L75 85"
+                  stroke="white"
+                  strokeWidth="0.1"
+                  strokeOpacity="0.1"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 3, ease: "easeInOut", delay: 0.8 }}
+                />
                 {/* Subtle Glow Lines */}
-                {[...Array(3)].map((_, i) => (
+                {[...Array(4)].map((_, i) => (
                   <motion.line
                     key={i}
-                    x1="10" y1={85 - i * 5} x2="90" y2={85 - i * 5}
+                    x1="10" y1={85 - i * 6} x2="90" y2={85 - i * 6}
                     stroke="white"
                     strokeWidth="0.1"
                     initial={{ opacity: 0, scaleX: 0 }}

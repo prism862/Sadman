@@ -85,7 +85,7 @@ export default function ProductPage() {
           <div 
             ref={scrollRef}
             onScroll={handleScroll}
-            className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+            className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide scroll-smooth"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {product.isSpectrum && product.spectrumImage && (
@@ -93,7 +93,7 @@ export default function ProductPage() {
                 key="spectrum-image"
                 initial={{ opacity: 0, scale: 1.1 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="relative aspect-[2/3] min-w-full snap-center overflow-hidden rounded-[3rem] glass border-prism-mid/30"
+                className="relative aspect-[2/3] min-w-full snap-center snap-always overflow-hidden rounded-[3rem] glass border-prism-mid/30"
               >
                 <SmoothImage 
                   src={product.spectrumImage} 
@@ -114,7 +114,7 @@ export default function ProductPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
-                className="glass border-white/5 overflow-hidden aspect-[2/3] min-w-full snap-center rounded-[3rem]"
+                className="glass border-white/5 overflow-hidden aspect-[2/3] min-w-full snap-center snap-always rounded-[3rem]"
               >
                 <SmoothImage 
                   src={img} 
