@@ -279,35 +279,35 @@ export default function Home() {
       </section>
 
       {/* Instagram CTA Section */}
-      <section className="max-w-7xl mx-auto px-6 pb-20">
+      <section className="max-w-4xl mx-auto px-6 pb-20">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="relative p-12 md:p-24 glass border-prism-mid/20 rounded-[3rem] overflow-hidden text-center group"
+          className="relative p-10 md:p-16 glass border-prism-mid/20 rounded-[3rem] overflow-hidden text-center group"
         >
-          <div className="absolute top-0 right-0 w-96 h-96 bg-prism-mid/10 blur-[120px] -mr-48 -mt-48 group-hover:bg-prism-mid/20 transition-colors duration-1000" />
-          <div className="absolute bottom-0 left-0 w-96 h-96 bg-prism-start/10 blur-[120px] -ml-48 -mb-48 group-hover:bg-prism-start/20 transition-colors duration-1000" />
+          <div className="absolute top-0 right-0 w-64 h-64 bg-prism-mid/10 blur-[100px] -mr-32 -mt-32 group-hover:bg-prism-mid/20 transition-colors duration-1000" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-prism-start/10 blur-[100px] -ml-32 -mb-32 group-hover:bg-prism-start/20 transition-colors duration-1000" />
           
           <div className="relative z-10">
             <motion.div
               animate={{ rotate: [0, 10, -10, 0] }}
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-              className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-white/5 mb-8 text-prism-mid"
+              className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/5 mb-6 text-prism-mid"
             >
-              <Instagram size={40} />
+              <Instagram size={32} />
             </motion.div>
-            <h2 className="text-4xl md:text-6xl font-display font-black mb-6 tracking-tighter uppercase">Join the <span className="prism-text">Spectrum</span></h2>
-            <p className="text-white/40 text-lg md:text-xl mb-12 max-w-2xl mx-auto font-light leading-relaxed">
+            <h2 className="text-3xl md:text-5xl font-display font-black mb-4 tracking-tighter uppercase">Join the <span className="prism-text">Spectrum</span></h2>
+            <p className="text-white/40 text-sm md:text-base mb-8 max-w-xl mx-auto font-light leading-relaxed">
               Follow us for exclusive drops, behind-the-scenes content, and styling inspiration from the PRISM community.
             </p>
             <a 
               href="https://instagram.com/prism_thebest" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-4 px-12 py-6 bg-white text-black font-display font-bold uppercase tracking-[0.2em] text-sm rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_0_50px_rgba(255,255,255,0.1)]"
+              className="inline-flex items-center gap-3 px-8 py-4 bg-white text-black font-display font-bold uppercase tracking-[0.2em] text-[10px] rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.1)]"
             >
-              @prism_thebest <ArrowRight size={18} />
+              @prism_thebest <ArrowRight size={14} />
             </a>
           </div>
         </motion.div>
