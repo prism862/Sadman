@@ -16,6 +16,13 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Root API Route
+  app.get("/api", async (req, res) => {
+    const handler = (await import("./api/index.js")).default;
+    // @ts-ignore
+    return handler(req, res);
+  });
+
   // API Route for Order Notifications
   app.post("/api/order-notification", async (req, res) => {
     // Import the handler dynamically to avoid issues with Vercel types in local dev
