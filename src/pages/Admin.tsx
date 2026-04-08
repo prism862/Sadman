@@ -457,6 +457,7 @@ export default function Admin() {
                           <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 glass border-white/10 rounded-lg">
                             <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${
                               order.status === 'delivered' ? 'bg-green-500' : 
+                              order.status === 'refunded' ? 'bg-red-500' :
                               order.status === 'shipped' ? 'bg-blue-500' : 
                               order.status === 'processing' ? 'bg-orange-500' : 'bg-prism-mid'
                             }`} />
@@ -497,6 +498,7 @@ export default function Admin() {
                           <option value="processing">Processing</option>
                           <option value="shipped">Shipped</option>
                           <option value="delivered">Delivered</option>
+                          <option value="refunded">Refunded</option>
                         </select>
                       </div>
                     </div>

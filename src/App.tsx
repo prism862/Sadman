@@ -27,6 +27,7 @@ const Checkout = lazy(() => import('./pages/Checkout'));
 const Invoice = lazy(() => import('./pages/Invoice'));
 const OrderSuccess = lazy(() => import('./pages/OrderSuccess'));
 const Admin = lazy(() => import('./pages/Admin'));
+const RefundPolicy = lazy(() => import('./pages/RefundPolicy'));
 
 // Enhanced loading fallback
 const PageLoader = () => {
@@ -136,6 +137,7 @@ function AppContent() {
                     <Route path="/order-success/:orderId" element={<OrderSuccess />} />
                     <Route path="/invoice/:orderId" element={<Invoice />} />
                     <Route path="/admin" element={<Admin />} />
+                    <Route path="/refund-policy" element={<RefundPolicy />} />
                   </Routes>
                 </motion.div>
               </AnimatePresence>
@@ -148,10 +150,11 @@ function AppContent() {
                 <h2 className="font-display font-bold text-2xl tracking-[0.2em] mb-2">PRISM</h2>
                 <p className="text-white/30 text-[10px] uppercase tracking-[0.3em]">Refracting Style Since 2025</p>
               </div>
-              <div className="flex gap-12 text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">
+              <div className="flex flex-wrap justify-center md:justify-start gap-8 text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">
                 <a href="https://instagram.com/prism_thebest" target="_blank" rel="noopener noreferrer" className="hover:prism-text transition-colors flex items-center gap-2">
                   Instagram <span className="text-white/20">@prism_thebest</span>
                 </a>
+                <a href="/refund-policy" className="hover:text-white transition-colors">Refund Policy</a>
                 <a href="#" className="hover:text-white transition-colors">Twitter</a>
                 <a href="#" className="hover:text-white transition-colors">Discord</a>
               </div>

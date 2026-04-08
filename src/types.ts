@@ -30,5 +30,5 @@ export interface Order {
     address: string;
   };
   date: string;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered';
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'refunded';
 }
