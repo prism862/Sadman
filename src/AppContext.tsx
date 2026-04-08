@@ -5,14 +5,18 @@ import { initialProducts } from './data/initialProducts';
 interface AppContextType {
   products: Product[];
   cart: CartItem[];
+  wishlist: Product[];
   orders: Order[];
   addToCart: (product: Product, size: string) => void;
   removeFromCart: (id: string, size: string) => void;
   clearCart: () => void;
+  toggleWishlist: (product: Product) => void;
+  isInWishlist: (id: string) => boolean;
   addOrder: (order: Order) => void;
   addProduct: (product: Product) => void;
   updateProduct: (product: Product) => void;
   deleteProduct: (id: string) => void;
+  updateOrderStatus: (orderId: string, status: Order['status']) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -24,6 +28,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
   const [cart, setCart] = useState<CartItem[]>(() => {
     const saved = localStorage.getItem('prism_cart');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [wishlist, setWishlist] = useState<Product[]>(() => {
+    const saved = localStorage.getItem('prism_wishlist');
     return saved ? JSON.parse(saved) : [];
   });
   const [orders, setOrders] = useState<Order[]>(() => {
@@ -38,6 +46,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.setItem('prism_cart', JSON.stringify(cart));
   }, [cart]);
+
+  useEffect(() => {
+    localStorage.setItem('prism_wishlist', JSON.stringify(wishlist));
+  }, [wishlist]);
 
   useEffect(() => {
     localStorage.setItem('prism_orders', JSON.stringify(orders));
@@ -63,6 +75,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = () => setCart([]);
 
+  const toggleWishlist = (product: Product) => {
+    setWishlist(prev => {
+      const exists = prev.find(p => p.id === product.id);
+      if (exists) {
+        return prev.filter(p => p.id !== product.id);
+      }
+      return [...prev, product];
+    });
+  };
+
+  const isInWishlist = (id: string) => wishlist.some(p => p.id === id);
+
   const addOrder = (order: Order) => {
     setOrders(prev => [order, ...prev]);
     clearCart();
@@ -71,12 +95,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addProduct = (product: Product) => setProducts(prev => [...prev, product]);
   const updateProduct = (product: Product) => setProducts(prev => prev.map(p => p.id === product.id ? product : p));
   const deleteProduct = (id: string) => setProducts(prev => prev.filter(p => p.id !== id));
+  const updateOrderStatus = (orderId: string, status: Order['status']) => {
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+  };
 
   return (
     <AppContext.Provider value={{
-      products, cart, orders,
+      products, cart, wishlist, orders,
       addToCart, removeFromCart, clearCart,
-      addOrder, addProduct, updateProduct, deleteProduct
+      toggleWishlist, isInWishlist,
+      addOrder, addProduct, updateProduct, deleteProduct,
+      updateOrderStatus
     }}>
       {children}
     </AppContext.Provider>

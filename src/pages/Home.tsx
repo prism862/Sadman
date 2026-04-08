@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles, Instagram } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { fadeInUp, fadeIn, scaleIn, staggerContainer, staggerItem } from '../constants/animations';
 
 export default function Home() {
   return (
@@ -10,12 +11,12 @@ export default function Home() {
       <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-prism-mid/10 blur-[100px] rounded-full pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-[700px] h-[700px] bg-prism-end/10 blur-[120px] rounded-full pointer-events-none" />
 
-      <section className="relative max-w-7xl mx-auto px-6 pt-32 pb-40 flex flex-col items-center text-center">
+      <section className="relative max-w-7xl mx-auto px-6 pt-32 pb-20 flex flex-col items-center text-center">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          variants={fadeInUp}
+          initial="initial"
+          whileInView="animate"
           viewport={{ once: true }}
-          transition={{ duration: 1 }}
           className="inline-flex items-center gap-2 px-6 py-2 rounded-full glass mb-12"
         >
           <Sparkles size={16} className="text-prism-mid animate-pulse" />
@@ -25,20 +26,20 @@ export default function Home() {
         </motion.div>
 
         <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
+          variants={fadeInUp}
+          initial="initial"
+          animate="animate"
           className="text-7xl md:text-[10rem] font-display font-black tracking-[-0.05em] mb-12 leading-[0.85]"
         >
           PRISM <br />
-          <span className="prism-text italic">QUALITY</span>
+          <span className="prism-text italic uppercase">THE BEST</span>
         </motion.h1>
 
         {/* Animated Prism Hero Element with Internal Lines */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1, delay: 0.4 }}
+          variants={scaleIn}
+          initial="initial"
+          animate="animate"
           className="relative mb-20"
         >
           <div className="w-48 h-48 md:w-64 md:h-64 relative flex items-center justify-center">
@@ -111,10 +112,10 @@ export default function Home() {
         </motion.div>
 
         <motion.p
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
+          variants={fadeIn}
+          initial="initial"
+          whileInView="animate"
           viewport={{ once: true }}
-          transition={{ duration: 1.5, delay: 0.5 }}
           className="max-w-2xl text-xl text-white/40 mb-16 leading-relaxed font-light tracking-wide"
         >
           Engineered for durability. Designed for distinction. 
@@ -122,10 +123,10 @@ export default function Home() {
         </motion.p>
 
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          variants={fadeInUp}
+          initial="initial"
+          whileInView="animate"
           viewport={{ once: true }}
-          transition={{ duration: 1, delay: 0.8 }}
           className="flex flex-col sm:flex-row gap-6"
         >
           <Link 
@@ -144,8 +145,14 @@ export default function Home() {
       </section>
 
       {/* Brand Proof / Quality Section */}
-      <section className="max-w-7xl mx-auto px-6 pb-40">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <section className="max-w-7xl mx-auto px-6 pb-20">
+        <motion.div 
+          variants={staggerContainer}
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-8"
+        >
           {[
             {
               title: "Premium Materials",
@@ -165,10 +172,7 @@ export default function Home() {
           ].map((item, i) => (
             <motion.div
               key={i}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8, delay: i * 0.2 }}
+              variants={staggerItem}
               className="p-10 glass border-white/5 rounded-[2.5rem] hover:border-white/20 transition-colors group"
             >
               {item.icon}
@@ -176,11 +180,11 @@ export default function Home() {
               <p className="text-white/40 leading-relaxed font-light">{item.desc}</p>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
       </section>
 
       {/* Featured Grid */}
-      <section className="max-w-7xl mx-auto px-6 pb-40">
+      <section className="max-w-7xl mx-auto px-6 pb-20">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           <motion.div 
             initial={{ opacity: 0, x: -50 }}
@@ -257,6 +261,41 @@ export default function Home() {
           </div>
         </div>
       </section>
+      {/* Instagram CTA Section */}
+      <section className="max-w-7xl mx-auto px-6 pb-20">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="relative p-12 md:p-24 glass border-prism-mid/20 rounded-[3rem] overflow-hidden text-center group"
+        >
+          <div className="absolute top-0 right-0 w-96 h-96 bg-prism-mid/10 blur-[120px] -mr-48 -mt-48 group-hover:bg-prism-mid/20 transition-colors duration-1000" />
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-prism-start/10 blur-[120px] -ml-48 -mb-48 group-hover:bg-prism-start/20 transition-colors duration-1000" />
+          
+          <div className="relative z-10">
+            <motion.div
+              animate={{ rotate: [0, 10, -10, 0] }}
+              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+              className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-white/5 mb-8 text-prism-mid"
+            >
+              <Instagram size={40} />
+            </motion.div>
+            <h2 className="text-4xl md:text-6xl font-display font-black mb-6 tracking-tighter uppercase">Join the <span className="prism-text">Spectrum</span></h2>
+            <p className="text-white/40 text-lg md:text-xl mb-12 max-w-2xl mx-auto font-light leading-relaxed">
+              Follow us for exclusive drops, behind-the-scenes content, and styling inspiration from the PRISM community.
+            </p>
+            <a 
+              href="https://instagram.com/prism_thebest" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-4 px-12 py-6 bg-white text-black font-display font-bold uppercase tracking-[0.2em] text-sm rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_0_50px_rgba(255,255,255,0.1)]"
+            >
+              @prism_thebest <ArrowRight size={18} />
+            </a>
+          </div>
+        </motion.div>
+      </section>
+
     </div>
   );
 };

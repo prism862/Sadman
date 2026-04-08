@@ -1,9 +1,75 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { CheckCircle2, Printer, ArrowRight, Package, CreditCard, Truck, Instagram } from 'lucide-react';
+import { CheckCircle2, Printer, ArrowRight, Package, CreditCard, Truck, Instagram, Clock, Settings, Send, CheckCircle } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { formatPrice } from '../lib/utils';
+import { Order } from '../types';
+
+const StatusTracker = ({ status }: { status: Order['status'] }) => {
+  const steps = [
+    { id: 'pending', label: 'Confirmed', icon: Clock },
+    { id: 'processing', label: 'Processing', icon: Settings },
+    { id: 'shipped', label: 'Shipped', icon: Send },
+    { id: 'delivered', label: 'Delivered', icon: CheckCircle },
+  ];
+
+  const currentStepIndex = steps.findIndex(s => s.id === status);
+
+  return (
+    <div className="w-full py-12 px-4 mb-12 glass border-white/5 rounded-[2.5rem] overflow-hidden relative">
+      <div className="absolute inset-0 bg-gradient-to-r from-prism-start/5 via-transparent to-prism-mid/5 pointer-events-none" />
+      <div className="relative flex justify-between items-start max-w-2xl mx-auto">
+        {steps.map((step, index) => {
+          const Icon = step.icon;
+          const isCompleted = index < currentStepIndex;
+          const isCurrent = index === currentStepIndex;
+          const isLast = index === steps.length - 1;
+
+          return (
+            <div key={step.id} className="flex flex-col items-center relative z-10 flex-1">
+              {/* Connector Line */}
+              {!isLast && (
+                <div className="absolute top-5 left-1/2 w-full h-[2px] bg-white/5">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: isCompleted ? '100%' : isCurrent ? '50%' : '0%' }}
+                    className="h-full bg-prism-mid shadow-[0_0_10px_rgba(121,40,202,0.5)]"
+                  />
+                </div>
+              )}
+              
+              {/* Step Icon */}
+              <motion.div
+                initial={false}
+                animate={{
+                  scale: isCurrent ? 1.2 : 1,
+                  backgroundColor: isCompleted || isCurrent ? 'rgba(121, 40, 202, 1)' : 'rgba(255, 255, 255, 0.05)',
+                  borderColor: isCurrent ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.1)',
+                }}
+                className={`w-10 h-10 rounded-xl border flex items-center justify-center mb-3 transition-colors duration-500`}
+              >
+                <Icon size={18} className={isCompleted || isCurrent ? 'text-white' : 'text-white/20'} />
+              </motion.div>
+
+              {/* Step Label */}
+              <span className={`text-[9px] font-bold uppercase tracking-[0.2em] text-center ${isCurrent ? 'text-white' : 'text-white/30'}`}>
+                {step.label}
+              </span>
+              
+              {isCurrent && (
+                <motion.div 
+                  layoutId="active-dot"
+                  className="w-1 h-1 rounded-full bg-prism-mid mt-2 animate-pulse"
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 export default function Invoice() {
   const { orderId } = useParams();
@@ -28,18 +94,25 @@ export default function Invoice() {
         >
           <CheckCircle2 className="w-12 h-12 text-white" />
         </motion.div>
-        <h1 className="text-5xl font-display font-black tracking-tighter mb-4 uppercase text-white">THANKS FOR <span className="prism-text">ORDERING</span></h1>
-        <p className="text-white/40 uppercase tracking-[0.4em] text-[10px] font-mono">Order Confirmed • {order.id}</p>
+        <h1 className="text-5xl font-display font-black tracking-tighter mb-4 uppercase text-white">
+          ORDER <span className="prism-text">COMPLETED</span>
+        </h1>
+        <p className="text-white/40 uppercase tracking-[0.4em] text-[10px] font-mono mb-8">Thank you for your purchase • {order.id}</p>
+        
         <motion.div 
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.5 }}
-          className="mt-6 inline-flex items-center gap-2 px-6 py-2 glass border-prism-mid/40 rounded-full shadow-[0_0_20px_rgba(121,40,202,0.2)]"
+          className="inline-flex items-center gap-2 px-6 py-2 glass border-prism-mid/40 rounded-full shadow-[0_0_20px_rgba(121,40,202,0.2)]"
         >
           <div className="w-2 h-2 rounded-full bg-prism-mid animate-pulse" />
-          <span className="text-[10px] font-bold uppercase tracking-[0.3em] prism-text">Order Complete</span>
+          <span className="text-[10px] font-bold uppercase tracking-[0.3em] prism-text">
+            {order.status === 'delivered' ? 'Order Delivered' : 'Ready for Dispatch'}
+          </span>
         </motion.div>
       </div>
+
+      <StatusTracker status={order.status} />
 
       <div className="glass border-white/10 p-10 md:p-16 relative overflow-hidden rounded-[3rem]">
         <div className="absolute top-0 right-0 w-64 h-64 bg-prism-mid/10 blur-[100px] -mr-32 -mt-32 animate-pulse" />
@@ -51,6 +124,7 @@ export default function Invoice() {
             <div className="space-y-1">
               <p className="text-[10px] text-white/30 uppercase tracking-widest">Quality Excellence</p>
               <p className="text-[10px] text-white/30 uppercase tracking-widest">Spectrum Heights, 2025</p>
+              <p className="text-[10px] text-white/30 uppercase tracking-widest mt-4">Date: {new Date(order.date).toLocaleDateString()}</p>
             </div>
           </div>
           <div className="text-left md:text-right">
@@ -70,7 +144,7 @@ export default function Invoice() {
           {order.items.map((item, i) => (
             <div key={i} className="flex justify-between items-center py-4 border-b border-white/5 last:border-0">
               <div className="flex gap-4">
-                <div className="w-12 h-16 glass border-white/5 overflow-hidden shrink-0">
+                <div className="w-16 h-16 glass border-white/5 overflow-hidden shrink-0 rounded-xl">
                   <img src={item.images[0]} alt={item.title} className="w-full h-full object-cover" />
                 </div>
                 <div>

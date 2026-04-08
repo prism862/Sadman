@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingBag, Menu, X, User, Search } from 'lucide-react';
+import { ShoppingBag, Menu, X, User, Search, Heart } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { cn } from '../lib/utils';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const { cart } = useApp();
+  const { cart, wishlist } = useApp();
   const location = useLocation();
 
   const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
@@ -19,7 +19,7 @@ export default function Navbar() {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 transition-all duration-300 will-change-transform">
+    <nav className="fixed top-8 left-0 w-full z-50 transition-all duration-300 will-change-transform">
       <div className="absolute inset-0 bg-black/20 backdrop-blur-md border-b border-white/5" />
       
       <div className="relative max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
@@ -36,11 +36,18 @@ export default function Navbar() {
               key={link.path}
               to={link.path}
               className={cn(
-                "text-sm font-medium tracking-widest uppercase transition-all hover:text-prism-mid",
+                "relative text-sm font-medium tracking-widest uppercase transition-all hover:text-prism-mid group/nav",
                 location.pathname === link.path ? "text-prism-mid" : "text-white/70"
               )}
             >
               {link.name}
+              {location.pathname === link.path && (
+                <motion.div 
+                  layoutId="nav-active"
+                  className="absolute -bottom-2 left-0 w-full h-0.5 bg-prism-mid"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
             </Link>
           ))}
         </div>
@@ -48,6 +55,18 @@ export default function Navbar() {
         <div className="flex items-center gap-6">
           <Link to="/shop" className="text-white/70 hover:text-white transition-colors">
             <Search size={20} />
+          </Link>
+          <Link to="/wishlist" className="relative text-white/70 hover:text-white transition-colors">
+            <Heart size={20} />
+            {wishlist.length > 0 && (
+              <motion.span 
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute -top-2 -right-2 w-4 h-4 bg-prism-mid text-[10px] font-bold rounded-full flex items-center justify-center text-white"
+              >
+                {wishlist.length}
+              </motion.span>
+            )}
           </Link>
           <Link to="/cart" className="relative text-white/70 hover:text-white transition-colors">
             <ShoppingBag size={20} />

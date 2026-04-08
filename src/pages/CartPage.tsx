@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Trash2, ArrowRight, ShoppingBag } from 'lucide-react';
 import { useApp } from '../AppContext';
 import { formatPrice } from '../lib/utils';
+import { fadeInUp, staggerContainer, staggerItem, hoverScale } from '../constants/animations';
 
 export default function CartPage() {
   const { cart, removeFromCart } = useApp();
@@ -18,7 +19,7 @@ export default function CartPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="max-w-7xl mx-auto px-6 py-40 text-center"
+        className="max-w-7xl mx-auto px-6 pt-20 pb-40 text-center"
       >
         <ShoppingBag className="w-16 h-16 text-white/10 mx-auto mb-8" />
         <h1 className="text-4xl font-display font-bold tracking-tighter mb-4 uppercase">Your Bag is Empty</h1>
@@ -35,23 +36,28 @@ export default function CartPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="max-w-7xl mx-auto px-6 py-12"
+      className="max-w-7xl mx-auto px-6 pt-20 pb-12"
     >
       <h1 className="text-5xl md:text-7xl font-display font-bold tracking-tighter mb-16 uppercase">YOUR <span className="prism-text">BAG</span></h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
         <div className="lg:col-span-2 space-y-8">
-          <AnimatePresence mode="popLayout">
-            {cart.map((item) => (
-              <motion.div
-                layout
-                key={`${item.id}-${item.selectedSize}`}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="flex gap-6 p-6 glass border-white/5 group"
-              >
-                <div className="w-24 h-32 md:w-32 md:h-40 overflow-hidden shrink-0">
+          <motion.div 
+            variants={staggerContainer}
+            initial="initial"
+            animate="animate"
+            className="space-y-8"
+          >
+            <AnimatePresence mode="popLayout">
+              {cart.map((item) => (
+                <motion.div
+                  layout
+                  key={`${item.id}-${item.selectedSize}`}
+                  variants={staggerItem}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="flex gap-6 p-6 glass border-white/5 group"
+                >
+                <div className="w-24 h-24 md:w-32 md:h-32 overflow-hidden shrink-0 rounded-2xl">
                   <img 
                     src={item.images[0]} 
                     alt={item.title} 
@@ -85,9 +91,15 @@ export default function CartPage() {
               </motion.div>
             ))}
           </AnimatePresence>
+          </motion.div>
         </div>
 
-        <div className="lg:sticky lg:top-32 h-fit">
+        <motion.div 
+          variants={fadeInUp}
+          initial="initial"
+          animate="animate"
+          className="lg:sticky lg:top-32 h-fit"
+        >
           <div className="p-8 glass border-white/10">
             <h2 className="font-display font-bold text-2xl uppercase tracking-tight mb-8">Order Summary</h2>
             <div className="space-y-4 mb-8">
@@ -115,7 +127,7 @@ export default function CartPage() {
               Secure encrypted payment processing.
             </p>
           </div>
-        </div>
+        </motion.div>
       </div>
     </motion.div>
   );
