@@ -5,6 +5,7 @@ import { ArrowLeft, ShoppingBag, Ruler, Truck, RotateCcw, Info, Instagram, Arrow
 import { useApp } from '../AppContext';
 import { formatPrice, cn } from '../lib/utils';
 import { fadeInUp, staggerContainer, staggerItem, hoverScale } from '../constants/animations';
+import SmoothImage from '../components/SmoothImage';
 
 export default function ProductPage() {
   const { id } = useParams();
@@ -90,12 +91,12 @@ export default function ProductPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 className="relative aspect-[2/3] min-w-full snap-center overflow-hidden rounded-[3rem] glass border-prism-mid/30"
               >
-                <img 
+                <SmoothImage 
                   src={product.spectrumImage} 
                   alt="Spectrum Effect" 
                   className="w-full h-full object-cover mix-blend-screen opacity-80"
+                  containerClassName="w-full h-full"
                   loading="eager"
-                  decoding="async"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-prism-start/20 to-transparent" />
                 <div className="absolute top-6 left-6">
@@ -111,13 +112,12 @@ export default function ProductPage() {
                 transition={{ delay: i * 0.1 }}
                 className="glass border-white/5 overflow-hidden aspect-[2/3] min-w-full snap-center rounded-[3rem]"
               >
-                <img 
+                <SmoothImage 
                   src={img} 
                   alt={product.title} 
                   className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
+                  containerClassName="w-full h-full"
                   loading={i === 0 ? "eager" : "lazy"}
-                  decoding="async"
                 />
               </motion.div>
             ))}
@@ -390,11 +390,12 @@ export default function ProductPage() {
                     {...hoverScale}
                     className="relative aspect-[2/3] overflow-hidden glass border-white/5 mb-4"
                   >
-                    <img 
+                    <SmoothImage 
                       src={item.images[0]} 
                       alt={item.title} 
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                      referrerPolicy="no-referrer"
+                      containerClassName="w-full h-full"
+                      loading="lazy"
                     />
                     {item.offer && (
                       <div className="absolute top-4 left-4 px-3 py-1 bg-prism-start text-white text-[10px] font-bold uppercase tracking-widest rounded-full shadow-lg">

@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { ArrowRight, Sparkles, Instagram } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { fadeInUp, fadeIn, scaleIn, staggerContainer, staggerItem } from '../constants/animations';
+import SmoothImage from '../components/SmoothImage';
 
 export default function Home() {
   return (
@@ -193,13 +194,12 @@ export default function Home() {
             transition={{ duration: 1 }}
             className="relative h-[700px] rounded-[3rem] overflow-hidden group cursor-pointer"
           >
-            <img 
+            <SmoothImage 
               src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=1200" 
               alt="Model"
               className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-              referrerPolicy="no-referrer"
+              containerClassName="w-full h-full"
               loading="eager"
-              decoding="async"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
             <div className="absolute bottom-16 left-16">
@@ -219,13 +219,12 @@ export default function Home() {
               transition={{ duration: 1, delay: 0.2 }}
               className="relative flex-1 rounded-[3rem] overflow-hidden group cursor-pointer"
             >
-              <img 
+              <SmoothImage 
                 src="https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=800" 
                 alt="Model"
                 className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                referrerPolicy="no-referrer"
+                containerClassName="w-full h-full"
                 loading="lazy"
-                decoding="async"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
               <div className="absolute bottom-12 left-12">
@@ -242,13 +241,12 @@ export default function Home() {
               transition={{ duration: 1, delay: 0.4 }}
               className="relative flex-1 rounded-[3rem] overflow-hidden group cursor-pointer"
             >
-              <img 
+              <SmoothImage 
                 src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&q=80&w=800" 
                 alt="Model"
                 className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                referrerPolicy="no-referrer"
+                containerClassName="w-full h-full"
                 loading="lazy"
-                decoding="async"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
               <div className="absolute bottom-12 left-12">

@@ -1,13 +1,23 @@
-import React, { useState, Suspense, lazy } from 'react';
+import React, { useState, Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
+import Lenis from 'lenis';
+import NProgress from 'nprogress';
+import 'nprogress/nprogress.css';
 import { AppProvider } from './AppContext';
 import { pageTransition } from './constants/animations';
 import Intro from './components/Intro';
 import Navbar from './components/Navbar';
 import TopBanner from './components/TopBanner';
 
-// Lazy load pages for better performance
+// Configure NProgress
+NProgress.configure({ 
+  showSpinner: false,
+  trickleSpeed: 200,
+  minimum: 0.1
+});
+
+// Lazy load pages
 const Home = lazy(() => import('./pages/Home'));
 const Shop = lazy(() => import('./pages/Shop'));
 const ProductPage = lazy(() => import('./pages/ProductPage'));
@@ -18,20 +28,81 @@ const Invoice = lazy(() => import('./pages/Invoice'));
 const OrderSuccess = lazy(() => import('./pages/OrderSuccess'));
 const Admin = lazy(() => import('./pages/Admin'));
 
-// Simple loading fallback
-const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-[#050505]">
-    <motion.div 
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="w-12 h-12 border-2 border-prism-mid border-t-transparent rounded-full animate-spin"
-    />
-  </div>
-);
+// Enhanced loading fallback
+const PageLoader = () => {
+  useEffect(() => {
+    NProgress.start();
+    return () => {
+      NProgress.done();
+    };
+  }, []);
+
+  return (
+    <div className="min-h-[60vh] flex flex-col items-center justify-center bg-transparent">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="relative"
+      >
+        <div className="w-16 h-16 border border-white/10 rounded-full" />
+        <motion.div 
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+          className="absolute inset-0 border-t-2 border-prism-mid rounded-full"
+        />
+      </motion.div>
+      <motion.p 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="mt-6 text-[10px] font-bold uppercase tracking-[0.3em] text-white/30"
+      >
+        Loading Experience
+      </motion.p>
+    </div>
+  );
+};
 
 function AppContent() {
   const [showIntro, setShowIntro] = useState(true);
   const location = useLocation();
+
+  // Initialize Lenis
+  useEffect(() => {
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      orientation: 'vertical',
+      gestureOrientation: 'vertical',
+      smoothWheel: true,
+      wheelMultiplier: 1,
+      touchMultiplier: 2,
+      infinite: false,
+    });
+
+    function raf(time: number) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+
+    requestAnimationFrame(raf);
+
+    return () => {
+      lenis.destroy();
+    };
+  }, []);
+
+  // Handle NProgress on route changes
+  useEffect(() => {
+    NProgress.start();
+    const timer = setTimeout(() => {
+      NProgress.done();
+    }, 100);
+    return () => {
+      clearTimeout(timer);
+      NProgress.done();
+    };
+  }, [location.pathname]);
 
   return (
     <>
@@ -53,6 +124,7 @@ function AppContent() {
                   initial="initial"
                   animate="animate"
                   exit="exit"
+                  className="min-h-[80vh]"
                 >
                   <Routes location={location}>
                     <Route path="/" element={<Home />} />

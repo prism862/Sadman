@@ -5,6 +5,7 @@ import { useApp } from '../AppContext';
 import { formatPrice, cn } from '../lib/utils';
 import { Link } from 'react-router-dom';
 import { fadeInUp, staggerContainer, staggerItem, hoverScale } from '../constants/animations';
+import SmoothImage from '../components/SmoothImage';
 
 export default function Shop() {
   const { products, toggleWishlist, isInWishlist } = useApp();
@@ -108,13 +109,12 @@ export default function Shop() {
                       {...hoverScale}
                       className="relative aspect-[2/3] rounded-3xl overflow-hidden mb-4 bg-white/5"
                     >
-                    <img 
+                    <SmoothImage 
                       src={product.images[0]} 
                       alt={product.title}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                      referrerPolicy="no-referrer"
+                      containerClassName="w-full h-full"
                       loading="lazy"
-                      decoding="async"
                     />
                     
                     {/* Overlay */}
