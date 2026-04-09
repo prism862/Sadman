@@ -80,15 +80,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
 
   // Fetch initial data from server
-  const refreshData = useCallback(async () => {
+  const refreshData = useCallback(async (retries = 3) => {
     try {
       setSyncStatus('syncing');
       const response = await fetch('/api/data');
+      if (!response.ok) throw new Error(`Server responded with ${response.status}`);
+      
       const data = await response.json();
-      if (data.products && data.products.length > 0) {
+      if (data.products && Array.isArray(data.products)) {
         setProducts(data.products);
       }
-      if (data.bannerImages && Object.keys(data.bannerImages).length > 0) {
+      if (data.bannerImages && typeof data.bannerImages === 'object') {
         setBannerImages(data.bannerImages);
       }
       setIsInitialized(true);
@@ -96,18 +98,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setTimeout(() => setSyncStatus('idle'), 2000);
     } catch (error) {
       console.error("Failed to fetch data from server:", error);
-      setIsInitialized(true);
-      setSyncStatus('error');
+      if (retries > 0) {
+        console.log(`Retrying fetch... (${retries} retries left)`);
+        setTimeout(() => refreshData(retries - 1), 1000);
+      } else {
+        setIsInitialized(true);
+        setSyncStatus('error');
+      }
     }
   }, []);
 
   useEffect(() => {
-    refreshData();
+    // Small delay to ensure server is ready
+    const timer = setTimeout(() => {
+      refreshData();
+    }, 500);
+    return () => clearTimeout(timer);
   }, [refreshData]);
 
   // Sync products with server
   const saveProductsToServer = useCallback(async (productsToSave?: Product[]) => {
     const data = productsToSave || products;
+    if (!isInitialized) return;
+
     try {
       setSyncStatus('syncing');
       const response = await fetch('/api/products', {
@@ -115,7 +128,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ products: data })
       });
-      if (!response.ok) throw new Error('Failed to save products');
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server responded with ${response.status}`);
+      }
+      
       setSyncStatus('synced');
       setTimeout(() => setSyncStatus('idle'), 2000);
     } catch (error) {
@@ -123,11 +141,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setSyncStatus('error');
       throw error;
     }
-  }, [products]);
+  }, [products, isInitialized]);
 
   // Sync settings with server
   const saveSettingsToServer = useCallback(async (settingsToSave?: any) => {
     const data = settingsToSave || bannerImages;
+    if (!isInitialized) return;
+
     try {
       setSyncStatus('syncing');
       const response = await fetch('/api/settings', {
@@ -135,7 +155,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bannerImages: data })
       });
-      if (!response.ok) throw new Error('Failed to save settings');
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server responded with ${response.status}`);
+      }
+      
       setSyncStatus('synced');
       setTimeout(() => setSyncStatus('idle'), 2000);
     } catch (error) {
@@ -143,7 +168,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setSyncStatus('error');
       throw error;
     }
-  }, [bannerImages]);
+  }, [bannerImages, isInitialized]);
 
   // Auto-sync products with server (debounced)
   useEffect(() => {
