@@ -78,8 +78,10 @@ async function startServer() {
 
   app.use(express.json({ limit: '50mb' }));
 
-  // API Routes for Data Persistence
-  app.get("/api/data", async (req, res) => {
+  // API Router
+  const apiRouter = express.Router();
+
+  apiRouter.get("/data", async (req, res) => {
     try {
       console.log(`[${new Date().toISOString()}] GET /api/data`);
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -91,7 +93,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/products", async (req, res) => {
+  apiRouter.post("/products", async (req, res) => {
     try {
       console.log(`[${new Date().toISOString()}] POST /api/products`);
       const { products } = req.body;
@@ -108,7 +110,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/settings", async (req, res) => {
+  apiRouter.post("/settings", async (req, res) => {
     try {
       console.log(`[${new Date().toISOString()}] POST /api/settings`);
       const { bannerImages } = req.body;
@@ -125,20 +127,33 @@ async function startServer() {
     }
   });
 
-  // Root API Route
-  app.get("/api", async (req, res) => {
-    const handler = (await import("./api/index.js")).default;
-    // @ts-ignore
-    return handler(req, res);
+  apiRouter.get("/", async (req, res) => {
+    try {
+      const handler = (await import("./api/index.js")).default;
+      // @ts-ignore
+      return handler(req, res);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load API handler" });
+    }
   });
 
-  // API Route for Order Notifications
-  app.post("/api/order-notification", async (req, res) => {
-    // Import the handler dynamically to avoid issues with Vercel types in local dev
-    const handler = (await import("./api/order-notification.js")).default;
-    // @ts-ignore - req/res types are compatible enough for this use case
-    return handler(req, res);
+  apiRouter.post("/order-notification", async (req, res) => {
+    try {
+      const handler = (await import("./api/order-notification.js")).default;
+      // @ts-ignore
+      return handler(req, res);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load notification handler" });
+    }
   });
+
+  // Catch-all for undefined API routes
+  apiRouter.all("*", (req, res) => {
+    console.warn(`[${new Date().toISOString()}] 404 on API route: ${req.method} ${req.originalUrl}`);
+    res.status(404).json({ error: `API route not found: ${req.method} ${req.originalUrl}` });
+  });
+
+  app.use("/api", apiRouter);
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
