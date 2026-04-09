@@ -5,7 +5,7 @@ import { Plus, Edit, Trash2, Save, X, Image as ImageIcon, Tag, DollarSign, GripV
 import { formatPrice, compressImage } from '../lib/utils';
 
 export default function Admin() {
-  const { products, addProduct, updateProduct, deleteProduct, orders, updateOrderStatus, bannerImages, updateBannerImages, syncStatus, refreshData, saveProductsToServer, saveSettingsToServer } = useApp();
+  const { products, addProduct, updateProduct, deleteProduct, orders, updateOrderStatus, bannerImages, updateBannerImages, syncStatus, lastError, refreshData, saveProductsToServer, saveSettingsToServer } = useApp();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -218,9 +218,16 @@ export default function Admin() {
                   </span>
                 )}
                 {syncStatus === 'error' && (
-                  <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-red-500">
-                    <AlertCircle size={10} /> Sync Error
-                  </span>
+                  <div className="flex flex-col items-end">
+                    <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-red-500">
+                      <AlertCircle size={10} /> Sync Error
+                    </span>
+                    {lastError && (
+                      <span className="text-[8px] text-red-500/60 font-mono mt-0.5 max-w-[200px] truncate" title={lastError}>
+                        {lastError}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

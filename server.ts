@@ -18,28 +18,58 @@ async function readDB() {
     if (!data || data.trim() === "") {
       return { products: [], bannerImages: {} };
     }
-    return JSON.parse(data);
+    try {
+      return JSON.parse(data);
+    } catch (parseError) {
+      console.error("JSON Parse Error:", parseError);
+      // If file exists but is invalid JSON, try to read from backup if it exists
+      // For now, we'll just throw to prevent overwriting with defaults
+      throw new Error("Database file is corrupted");
+    }
   } catch (error) {
     if ((error as any).code === 'ENOENT') {
       return { products: [], bannerImages: {} };
     }
     console.error("Error reading database:", error);
-    return { products: [], bannerImages: {} };
+    throw error;
   }
 }
 
-async function writeDB(data: any) {
+let isWriting = false;
+const writeQueue: any[] = [];
+
+async function processWriteQueue() {
+  if (isWriting || writeQueue.length === 0) return;
+  isWriting = true;
+  const { data, resolve, reject } = writeQueue.shift();
+
   try {
     const json = JSON.stringify(data, null, 2);
     if (!json || json === "{}" || json === "[]") {
       throw new Error("Attempted to write empty or invalid data to database");
     }
-    await fs.writeFile(DB_PATH, json, "utf-8");
+    
+    // Atomic write using a temp file
+    const tempPath = `${DB_PATH}.tmp`;
+    await fs.writeFile(tempPath, json, "utf-8");
+    await fs.rename(tempPath, DB_PATH);
+    
     console.log(`[${new Date().toISOString()}] Database updated successfully.`);
+    resolve();
   } catch (error) {
     console.error(`[${new Date().toISOString()}] CRITICAL: Error writing database:`, error);
-    throw error;
+    reject(error);
+  } finally {
+    isWriting = false;
+    processWriteQueue();
   }
+}
+
+async function writeDB(data: any) {
+  return new Promise<void>((resolve, reject) => {
+    writeQueue.push({ data, resolve, reject });
+    processWriteQueue();
+  });
 }
 
 async function startServer() {

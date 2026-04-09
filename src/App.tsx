@@ -4,11 +4,12 @@ import { AnimatePresence, motion } from 'motion/react';
 import Lenis from 'lenis';
 import NProgress from 'nprogress';
 import 'nprogress/nprogress.css';
-import { AppProvider } from './AppContext';
+import { AppProvider, useApp } from './AppContext';
 import { pageTransition } from './constants/animations';
 import Intro from './components/Intro';
 import Navbar from './components/Navbar';
 import TopBanner from './components/TopBanner';
+import { RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 
 // Configure NProgress
 NProgress.configure({ 
@@ -67,6 +68,7 @@ const PageLoader = () => {
 function AppContent() {
   const [showIntro, setShowIntro] = useState(true);
   const location = useLocation();
+  const { syncStatus } = useApp();
 
   // Initialize Lenis
   useEffect(() => {
@@ -158,8 +160,27 @@ function AppContent() {
                 <a href="#" className="hover:text-white transition-colors">Twitter</a>
                 <a href="#" className="hover:text-white transition-colors">Discord</a>
               </div>
-              <div className="text-[10px] text-white/20 uppercase tracking-widest">
-                © 2025 Prism Clothing
+              <div className="flex flex-col items-center md:items-end gap-2">
+                <div className="text-[10px] text-white/20 uppercase tracking-widest">
+                  © 2025 Prism Clothing
+                </div>
+                <div className="flex items-center gap-2">
+                  {syncStatus === 'syncing' && (
+                    <span className="flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest text-prism-mid">
+                      <RefreshCw size={8} className="animate-spin" /> Syncing
+                    </span>
+                  )}
+                  {syncStatus === 'synced' && (
+                    <span className="flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest text-green-500/50">
+                      <CheckCircle2 size={8} /> Online
+                    </span>
+                  )}
+                  {syncStatus === 'error' && (
+                    <span className="flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest text-red-500">
+                      <AlertCircle size={8} /> Sync Error
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </footer>
