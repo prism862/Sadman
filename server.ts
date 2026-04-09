@@ -35,8 +35,9 @@ async function writeDB(data: any) {
       throw new Error("Attempted to write empty or invalid data to database");
     }
     await fs.writeFile(DB_PATH, json, "utf-8");
+    console.log(`[${new Date().toISOString()}] Database updated successfully.`);
   } catch (error) {
-    console.error("CRITICAL: Error writing database:", error);
+    console.error(`[${new Date().toISOString()}] CRITICAL: Error writing database:`, error);
     throw error;
   }
 }
@@ -50,43 +51,46 @@ async function startServer() {
   // API Routes for Data Persistence
   app.get("/api/data", async (req, res) => {
     try {
+      console.log(`[${new Date().toISOString()}] GET /api/data`);
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       const data = await readDB();
       res.json(data);
     } catch (error) {
-      console.error("API Error (/api/data):", error);
+      console.error(`[${new Date().toISOString()}] API Error (/api/data):`, error);
       res.status(500).json({ error: "Failed to read database" });
     }
   });
 
   app.post("/api/products", async (req, res) => {
     try {
+      console.log(`[${new Date().toISOString()}] POST /api/products`);
       const { products } = req.body;
-      if (!products) {
-        return res.status(400).json({ error: "Missing products in request body" });
+      if (!products || !Array.isArray(products)) {
+        return res.status(400).json({ error: "Invalid or missing products in request body" });
       }
       const db = await readDB();
       db.products = products;
       await writeDB(db);
       res.json({ success: true });
     } catch (error) {
-      console.error("API Error (/api/products):", error);
+      console.error(`[${new Date().toISOString()}] API Error (/api/products):`, error);
       res.status(500).json({ error: (error as Error).message || "Failed to update products" });
     }
   });
 
   app.post("/api/settings", async (req, res) => {
     try {
+      console.log(`[${new Date().toISOString()}] POST /api/settings`);
       const { bannerImages } = req.body;
-      if (!bannerImages) {
-        return res.status(400).json({ error: "Missing bannerImages in request body" });
+      if (!bannerImages || typeof bannerImages !== 'object') {
+        return res.status(400).json({ error: "Invalid or missing bannerImages in request body" });
       }
       const db = await readDB();
       db.bannerImages = bannerImages;
       await writeDB(db);
       res.json({ success: true });
     } catch (error) {
-      console.error("API Error (/api/settings):", error);
+      console.error(`[${new Date().toISOString()}] API Error (/api/settings):`, error);
       res.status(500).json({ error: (error as Error).message || "Failed to update settings" });
     }
   });

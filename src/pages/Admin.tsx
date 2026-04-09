@@ -39,17 +39,15 @@ export default function Admin() {
   const handleSave = async () => {
     try {
       setIsProcessing(true);
+      // Update local state first
       updateProduct(editForm);
-      // Explicitly save to server
-      await saveProductsToServer();
+      // Explicitly save to server and wait for confirmation
+      await saveProductsToServer([...products.map(p => p.id === editForm.id ? editForm : p)]);
       setEditingId(null);
       setStorageWarning(null);
     } catch (e) {
-      if (e instanceof Error && e.name === 'QuotaExceededError') {
-        setStorageWarning("Storage limit reached! Try using smaller images or external URLs.");
-      } else {
-        setStorageWarning("Failed to save to server. Please try again.");
-      }
+      console.error("Save failed:", e);
+      setStorageWarning("Failed to save to server. Please try again.");
     } finally {
       setIsProcessing(false);
     }

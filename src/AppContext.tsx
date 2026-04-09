@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Product, CartItem, Order } from './types';
 import { initialProducts } from './data/initialProducts';
 
@@ -42,6 +42,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     essential: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=800',
     accessories: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&q=80&w=800'
   });
+
+  const lastSyncedProducts = useRef<string>('');
+  const lastSyncedSettings = useRef<string>('');
+  const isFetching = useRef(false);
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
       const saved = localStorage.getItem('prism_cart');
@@ -81,18 +85,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Fetch initial data from server
   const refreshData = useCallback(async (retries = 3) => {
+    if (isFetching.current) return;
+    isFetching.current = true;
+
     try {
       setSyncStatus('syncing');
       const response = await fetch('/api/data');
       if (!response.ok) throw new Error(`Server responded with ${response.status}`);
       
       const data = await response.json();
+      
+      // Update local state and track that this data is already synced
       if (data.products && Array.isArray(data.products)) {
         setProducts(data.products);
+        lastSyncedProducts.current = JSON.stringify(data.products);
       }
       if (data.bannerImages && typeof data.bannerImages === 'object') {
         setBannerImages(data.bannerImages);
+        lastSyncedSettings.current = JSON.stringify(data.bannerImages);
       }
+      
       setIsInitialized(true);
       setSyncStatus('synced');
       setTimeout(() => setSyncStatus('idle'), 2000);
@@ -100,11 +112,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       console.error("Failed to fetch data from server:", error);
       if (retries > 0) {
         console.log(`Retrying fetch... (${retries} retries left)`);
-        setTimeout(() => refreshData(retries - 1), 1000);
+        setTimeout(() => {
+          isFetching.current = false;
+          refreshData(retries - 1);
+        }, 1000);
       } else {
         setIsInitialized(true);
         setSyncStatus('error');
       }
+    } finally {
+      isFetching.current = false;
     }
   }, []);
 
@@ -118,15 +135,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Sync products with server
   const saveProductsToServer = useCallback(async (productsToSave?: Product[]) => {
+    if (!isInitialized || isFetching.current) return;
+    
     const data = productsToSave || products;
-    if (!isInitialized) return;
+    const dataString = JSON.stringify(data);
+    
+    // Don't sync if data hasn't changed since last sync
+    if (dataString === lastSyncedProducts.current) return;
 
     try {
       setSyncStatus('syncing');
       const response = await fetch('/api/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ products: data })
+        body: dataString === JSON.stringify({ products: data }) ? dataString : JSON.stringify({ products: data })
       });
       
       if (!response.ok) {
@@ -134,6 +156,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         throw new Error(errorData.message || `Server responded with ${response.status}`);
       }
       
+      lastSyncedProducts.current = dataString;
       setSyncStatus('synced');
       setTimeout(() => setSyncStatus('idle'), 2000);
     } catch (error) {
@@ -145,8 +168,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Sync settings with server
   const saveSettingsToServer = useCallback(async (settingsToSave?: any) => {
+    if (!isInitialized || isFetching.current) return;
+
     const data = settingsToSave || bannerImages;
-    if (!isInitialized) return;
+    const dataString = JSON.stringify(data);
+
+    // Don't sync if data hasn't changed since last sync
+    if (dataString === lastSyncedSettings.current) return;
 
     try {
       setSyncStatus('syncing');
@@ -161,6 +189,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         throw new Error(errorData.message || `Server responded with ${response.status}`);
       }
       
+      lastSyncedSettings.current = dataString;
       setSyncStatus('synced');
       setTimeout(() => setSyncStatus('idle'), 2000);
     } catch (error) {
