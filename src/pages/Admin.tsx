@@ -282,6 +282,15 @@ export default function Admin() {
                             placeholder="Black, White, Grey"
                           />
                         </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase text-white/40 mb-1 block">Sizes (comma separated)</label>
+                          <input 
+                            value={(editForm.sizes || []).join(', ')} 
+                            onChange={e => setEditForm({...editForm, sizes: e.target.value.split(',').map(s => s.trim()).filter(s => s !== '')})}
+                            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl"
+                            placeholder="S, M, L, XL, XXL"
+                          />
+                        </div>
                         <div className="flex flex-col gap-3">
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input 
