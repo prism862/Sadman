@@ -25,6 +25,10 @@ export default function Admin() {
     signInAnonymously(auth).catch(console.error);
   }, []);
 
+  useEffect(() => {
+    setBannerForm(bannerImages);
+  }, [bannerImages]);
+
   const handleLogin = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setError('');

@@ -292,10 +292,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [clearCart]);
 
   const addProduct = useCallback(async (product: Product) => {
-    const path = 'products';
+    const path = `products/${product.id}`;
     try {
       const { id, ...data } = product;
-      await addDoc(collection(db, path), data);
+      // Use setDoc with the provided ID to ensure consistency between client and server
+      await setDoc(doc(db, 'products', id), data);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, path);
     }
