@@ -9,7 +9,7 @@ import SmoothImage from '../components/SmoothImage';
 import RecentlyViewed from '../components/RecentlyViewed';
 
 export default function Shop() {
-  const { products, toggleWishlist, isInWishlist } = useApp();
+  const { products, loading, toggleWishlist, isInWishlist } = useApp();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
 
@@ -80,7 +80,16 @@ export default function Shop() {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-12"
         >
           <AnimatePresence mode="popLayout">
-            {filteredProducts.map((product, index) => (
+            {loading ? (
+              // Skeleton Loading
+              [...Array(8)].map((_, i) => (
+                <div key={`skeleton-${i}`} className="animate-pulse">
+                  <div className="aspect-[2/3] bg-white/5 rounded-[2.5rem] mb-4" />
+                  <div className="h-4 bg-white/5 rounded w-3/4 mb-2" />
+                  <div className="h-4 bg-white/5 rounded w-1/2" />
+                </div>
+              ))
+            ) : filteredProducts.map((product, index) => (
               <motion.div
                 layout
                 key={product.id}

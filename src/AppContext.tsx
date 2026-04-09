@@ -1,9 +1,74 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Product, CartItem, Order } from './types';
 import { initialProducts } from './data/initialProducts';
+import { db, auth } from './firebase';
+import { 
+  collection, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  query, 
+  orderBy,
+  setDoc,
+  getDocFromServer
+} from 'firebase/firestore';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId: string | undefined;
+    email: string | null | undefined;
+    emailVerified: boolean | undefined;
+    isAnonymous: boolean | undefined;
+    tenantId: string | null | undefined;
+    providerInfo: {
+      providerId: string;
+      displayName: string | null;
+      email: string | null;
+      photoUrl: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 interface AppContextType {
   products: Product[];
+  loading: boolean;
   cart: CartItem[];
   wishlist: Product[];
   recentlyViewed: string[];
@@ -25,30 +90,76 @@ interface AppContextType {
   deleteProduct: (id: string) => void;
   updateOrderStatus: (orderId: string, status: Order['status']) => void;
   updateBannerImages: (images: { spectrum: string; essential: string; accessories: string }) => void;
-  syncStatus: 'idle' | 'syncing' | 'synced' | 'error';
-  lastError: string | null;
-  refreshData: () => Promise<void>;
-  saveProductsToServer: (productsToSave?: Product[]) => Promise<void>;
-  saveSettingsToServer: (settingsToSave?: any) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [hasLoadedFromServer, setHasLoadedFromServer] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
-  const [lastError, setLastError] = useState<string | null>(null);
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isAuthReady, setIsAuthReady] = useState(false);
+
+  // Test connection
+  useEffect(() => {
+    async function testConnection() {
+      try {
+        await getDocFromServer(doc(db, 'test', 'connection'));
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Please check your Firebase configuration. ");
+        }
+      }
+    }
+    testConnection();
+  }, []);
+
+  // Auth listener
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(() => {
+      setIsAuthReady(true);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Real-time products listener
+  useEffect(() => {
+    const path = 'products';
+    const q = query(collection(db, path));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const prods: Product[] = [];
+      snapshot.forEach((doc) => {
+        prods.push({ id: doc.id, ...doc.data() } as Product);
+      });
+      setProducts(prods);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Real-time settings listener
+  useEffect(() => {
+    const path = 'settings/banners';
+    const unsubscribe = onSnapshot(doc(db, 'settings', 'banners'), (snapshot) => {
+      if (snapshot.exists()) {
+        setBannerImages(snapshot.data() as any);
+      }
+      setLoading(false);
+    }, (error) => {
+      // If document doesn't exist yet, it's fine, we use defaults
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const [bannerImages, setBannerImages] = useState({
     spectrum: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=1200',
     essential: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=800',
     accessories: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&q=80&w=800'
   });
-
-  const lastSyncedProducts = useRef<string>('');
-  const lastSyncedSettings = useRef<string>('');
-  const isFetching = useRef(false);
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
       const saved = localStorage.getItem('prism_cart');
@@ -86,169 +197,55 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
-  // Fetch initial data from server
-  const refreshData = useCallback(async (retries = 3) => {
-    if (isFetching.current) return;
-    isFetching.current = true;
-
+  useEffect(() => {
     try {
-      setSyncStatus('syncing');
-      const response = await fetch('/api/data');
-      if (!response.ok) throw new Error(`Server responded with ${response.status}`);
-      
-      const data = await response.json();
-      
-      // Update local state and track that this data is already synced
-      if (data.products && Array.isArray(data.products)) {
-        setProducts(data.products);
-        lastSyncedProducts.current = JSON.stringify(data.products);
+      localStorage.setItem('prism_products', JSON.stringify(products));
+    } catch (e) {
+      if (e instanceof Error && e.name === 'QuotaExceededError') {
+        console.error("Storage quota exceeded! Cannot save products.");
       }
-      if (data.bannerImages && typeof data.bannerImages === 'object') {
-        setBannerImages(data.bannerImages);
-        lastSyncedSettings.current = JSON.stringify(data.bannerImages);
-      }
-      
-      setHasLoadedFromServer(true);
-      setIsInitialized(true);
-      setSyncStatus('synced');
-      setLastError(null);
-      setTimeout(() => setSyncStatus('idle'), 2000);
-    } catch (error) {
-      console.error("Failed to fetch data from server:", error);
-      const msg = error instanceof Error ? error.message : String(error);
-      setLastError(msg);
-      if (retries > 0) {
-        console.log(`Retrying fetch... (${retries} retries left)`);
-        setTimeout(() => {
-          isFetching.current = false;
-          refreshData(retries - 1);
-        }, 1000);
-      } else {
-        setIsInitialized(true);
-        setSyncStatus('error');
-      }
-    } finally {
-      isFetching.current = false;
     }
-  }, []);
+  }, [products]);
 
   useEffect(() => {
-    // Small delay to ensure server is ready
-    const timer = setTimeout(() => {
-      refreshData();
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [refreshData]);
-
-  // Sync products with server
-  const saveProductsToServer = useCallback(async (productsToSave?: Product[]) => {
-    // CRITICAL: Never save if we haven't successfully loaded from server yet
-    // to prevent overwriting server data with initialProducts defaults
-    if (!isInitialized || !hasLoadedFromServer || isFetching.current) return;
-    
-    const data = productsToSave || products;
-    const dataString = JSON.stringify(data);
-    
-    // Don't sync if data hasn't changed since last sync
-    if (dataString === lastSyncedProducts.current) return;
-
     try {
-      setSyncStatus('syncing');
-      const response = await fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ products: data })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Server responded with ${response.status}`);
-      }
-      
-      lastSyncedProducts.current = dataString;
-      setSyncStatus('synced');
-      setLastError(null);
-      setTimeout(() => setSyncStatus('idle'), 2000);
-    } catch (error) {
-      console.error("Failed to sync products:", error);
-      setLastError(error instanceof Error ? error.message : String(error));
-      setSyncStatus('error');
-      throw error;
+      localStorage.setItem('prism_cart', JSON.stringify(cart));
+    } catch (e) {
+      console.error("Failed to save cart:", e);
     }
-  }, [products, isInitialized, hasLoadedFromServer]);
-
-  // Sync settings with server
-  const saveSettingsToServer = useCallback(async (settingsToSave?: any) => {
-    if (!isInitialized || !hasLoadedFromServer || isFetching.current) return;
-
-    const data = settingsToSave || bannerImages;
-    const dataString = JSON.stringify(data);
-
-    // Don't sync if data hasn't changed since last sync
-    if (dataString === lastSyncedSettings.current) return;
-
-    try {
-      setSyncStatus('syncing');
-      const response = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bannerImages: data })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Server responded with ${response.status}`);
-      }
-      
-      lastSyncedSettings.current = dataString;
-      setSyncStatus('synced');
-      setLastError(null);
-      setTimeout(() => setSyncStatus('idle'), 2000);
-    } catch (error) {
-      console.error("Failed to sync settings:", error);
-      setLastError(error instanceof Error ? error.message : String(error));
-      setSyncStatus('error');
-      throw error;
-    }
-  }, [bannerImages, isInitialized, hasLoadedFromServer]);
-
-  // Auto-sync products with server (debounced)
-  useEffect(() => {
-    if (!isInitialized) return;
-    
-    const timer = setTimeout(() => {
-      saveProductsToServer();
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [products, isInitialized, saveProductsToServer]);
-
-  // Auto-sync settings with server (debounced)
-  useEffect(() => {
-    if (!isInitialized) return;
-
-    const timer = setTimeout(() => {
-      saveSettingsToServer();
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [bannerImages, isInitialized, saveSettingsToServer]);
-
-  useEffect(() => {
-    localStorage.setItem('prism_cart', JSON.stringify(cart));
   }, [cart]);
 
   useEffect(() => {
-    localStorage.setItem('prism_wishlist', JSON.stringify(wishlist));
+    try {
+      localStorage.setItem('prism_wishlist', JSON.stringify(wishlist));
+    } catch (e) {
+      console.error("Failed to save wishlist:", e);
+    }
   }, [wishlist]);
 
   useEffect(() => {
-    localStorage.setItem('prism_recently_viewed', JSON.stringify(recentlyViewed));
+    try {
+      localStorage.setItem('prism_recently_viewed', JSON.stringify(recentlyViewed));
+    } catch (e) {
+      console.error("Failed to save recentlyViewed:", e);
+    }
   }, [recentlyViewed]);
 
   useEffect(() => {
-    localStorage.setItem('prism_orders', JSON.stringify(orders));
+    try {
+      localStorage.setItem('prism_orders', JSON.stringify(orders));
+    } catch (e) {
+      console.error("Failed to save orders:", e);
+    }
   }, [orders]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('prism_banner_images', JSON.stringify(bannerImages));
+    } catch (e) {
+      console.error("Failed to save banner images:", e);
+    }
+  }, [bannerImages]);
 
   const addToCart = useCallback((product: Product, size: string) => {
     setCart(prev => {
@@ -294,25 +291,54 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     clearCart();
   }, [clearCart]);
 
-  const addProduct = useCallback((product: Product) => setProducts(prev => [...prev, product]), []);
-  const updateProduct = useCallback((product: Product) => setProducts(prev => prev.map(p => p.id === product.id ? product : p)), []);
-  const deleteProduct = useCallback((id: string) => setProducts(prev => prev.filter(p => p.id !== id)), []);
+  const addProduct = useCallback(async (product: Product) => {
+    const path = 'products';
+    try {
+      const { id, ...data } = product;
+      await addDoc(collection(db, path), data);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, path);
+    }
+  }, []);
+
+  const updateProduct = useCallback(async (product: Product) => {
+    const path = `products/${product.id}`;
+    try {
+      const { id, ...data } = product;
+      await setDoc(doc(db, 'products', id), data, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
+  }, []);
+
+  const deleteProduct = useCallback(async (id: string) => {
+    const path = `products/${id}`;
+    try {
+      await deleteDoc(doc(db, 'products', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  }, []);
   const updateOrderStatus = useCallback((orderId: string, status: Order['status']) => {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
   }, []);
 
-  const updateBannerImages = useCallback((images: { spectrum: string; essential: string; accessories: string }) => {
-    setBannerImages(images);
+  const updateBannerImages = useCallback(async (images: { spectrum: string; essential: string; accessories: string }) => {
+    const path = 'settings/banners';
+    try {
+      await setDoc(doc(db, 'settings', 'banners'), images);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
   }, []);
 
   return (
     <AppContext.Provider value={{
-      products, cart, wishlist, recentlyViewed, orders, bannerImages,
+      products, loading, cart, wishlist, recentlyViewed, orders, bannerImages,
       addToCart, removeFromCart, clearCart,
       toggleWishlist, isInWishlist, addToRecentlyViewed,
       addOrder, addProduct, updateProduct, deleteProduct,
-      updateOrderStatus, updateBannerImages, syncStatus, lastError, refreshData,
-      saveProductsToServer, saveSettingsToServer
+      updateOrderStatus, updateBannerImages
     }}>
       {children}
     </AppContext.Provider>

@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../AppContext';
 import { motion, Reorder, AnimatePresence } from 'motion/react';
-import { Plus, Edit, Trash2, Save, X, Image as ImageIcon, Tag, DollarSign, GripVertical, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Image as ImageIcon, Tag, DollarSign, GripVertical, LogIn, LogOut } from 'lucide-react';
 import { formatPrice, compressImage } from '../lib/utils';
+import { auth, googleProvider } from '../firebase';
+import { signInWithPopup, signOut } from 'firebase/auth';
 
 export default function Admin() {
-  const { products, addProduct, updateProduct, deleteProduct, orders, updateOrderStatus, bannerImages, updateBannerImages, syncStatus, lastError, refreshData, saveProductsToServer, saveSettingsToServer } = useApp();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [password, setPassword] = useState('');
+  const { products, loading, addProduct, updateProduct, deleteProduct, orders, updateOrderStatus, bannerImages, updateBannerImages } = useApp();
+  const [user, setUser] = useState(auth.currentUser);
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>(null);
@@ -18,38 +19,46 @@ export default function Admin() {
   const [bannerForm, setBannerForm] = useState(bannerImages);
 
   useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((u) => {
+      setUser(u);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
     setBannerForm(bannerImages);
   }, [bannerImages]);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === 'sadman2025') {
-      setIsAuthenticated(true);
+  const handleLogin = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
       setError('');
-    } else {
-      setError('Incorrect password');
+    } catch (err) {
+      setError('Login failed. Please try again.');
+      console.error(err);
     }
   };
+
+  const handleLogout = async () => {
+    await signOut(auth);
+  };
+
+  const isAdmin = user?.email === 'sadmanraisa123@gmail.com';
 
   const startEdit = (product: any) => {
     setEditingId(product.id);
     setEditForm({ ...product });
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     try {
-      setIsProcessing(true);
-      // Update local state first
       updateProduct(editForm);
-      // Explicitly save to server and wait for confirmation
-      await saveProductsToServer([...products.map(p => p.id === editForm.id ? editForm : p)]);
       setEditingId(null);
       setStorageWarning(null);
     } catch (e) {
-      console.error("Save failed:", e);
-      setStorageWarning("Failed to save to server. Please try again.");
-    } finally {
-      setIsProcessing(false);
+      if (e instanceof Error && e.name === 'QuotaExceededError') {
+        setStorageWarning("Storage limit reached! Try using smaller images or external URLs.");
+      }
     }
   };
 
@@ -163,35 +172,42 @@ export default function Admin() {
     setIsProcessing(false);
   };
 
-  if (!isAuthenticated) {
+  if (!user || !isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-md w-full glass p-10 rounded-3xl text-center">
           <h1 className="text-3xl font-display font-black mb-8">ADMIN ACCESS</h1>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <input 
-              type="password" 
-              placeholder="Enter Password" 
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (error) setError('');
-              }}
-              className={`w-full px-6 py-4 bg-white/5 border rounded-2xl focus:outline-none transition-colors ${error ? 'border-red-500' : 'border-white/10 focus:border-prism-mid'}`}
-            />
-            {error && (
-              <motion.p 
-                initial={{ opacity: 0, y: -10 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                className="text-red-500 text-xs font-bold uppercase tracking-widest"
+          {!user ? (
+            <div className="space-y-6">
+              <p className="text-white/40 text-sm mb-6 uppercase tracking-widest">Please sign in with your admin account</p>
+              <button 
+                onClick={handleLogin} 
+                className="w-full py-4 bg-white text-black font-display font-bold rounded-2xl hover:bg-prism-mid hover:text-white transition-all flex items-center justify-center gap-3"
               >
-                {error}
-              </motion.p>
-            )}
-            <button type="submit" className="w-full py-4 bg-white text-black font-display font-bold rounded-2xl hover:bg-prism-mid hover:text-white transition-all">
-              Unlock Panel
-            </button>
-          </form>
+                <LogIn size={20} /> Sign in with Google
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <p className="text-red-500 text-sm mb-6 uppercase tracking-widest font-bold">Access Denied</p>
+              <p className="text-white/40 text-xs mb-8">Your account ({user.email}) does not have administrative privileges.</p>
+              <button 
+                onClick={handleLogout} 
+                className="w-full py-4 glass text-white font-display font-bold rounded-2xl hover:bg-red-500 transition-all flex items-center justify-center gap-3"
+              >
+                <LogOut size={20} /> Switch Account
+              </button>
+            </div>
+          )}
+          {error && (
+            <motion.p 
+              initial={{ opacity: 0, y: -10 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              className="text-red-500 text-xs font-bold uppercase tracking-widest mt-4"
+            >
+              {error}
+            </motion.p>
+          )}
         </motion.div>
       </div>
     );
@@ -201,47 +217,21 @@ export default function Admin() {
     <div className="min-h-screen pt-32 pb-20 px-6">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 mb-12">
-          <div>
-            <h1 className="text-5xl font-display font-black uppercase">Admin Panel</h1>
-            <div className="flex items-center gap-3 mt-2">
-              <p className="text-white/40 font-mono text-sm tracking-widest">Manage your spectrum</p>
-              <div className="h-1 w-1 rounded-full bg-white/20" />
-              <div className="flex items-center gap-2">
-                {syncStatus === 'syncing' && (
-                  <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-prism-mid animate-pulse">
-                    <RefreshCw size={10} className="animate-spin" /> Syncing...
-                  </span>
-                )}
-                {syncStatus === 'synced' && (
-                  <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-green-500">
-                    <CheckCircle2 size={10} /> Saved to Cloud
-                  </span>
-                )}
-                {syncStatus === 'error' && (
-                  <div className="flex flex-col items-end">
-                    <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-red-500">
-                      <AlertCircle size={10} /> Sync Error
-                    </span>
-                    {lastError && (
-                      <span className="text-[8px] text-red-500/60 font-mono mt-0.5 max-w-[200px] truncate" title={lastError}>
-                        {lastError}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
+          <div className="flex items-center gap-6">
+            <div>
+              <h1 className="text-5xl font-display font-black uppercase">Admin Panel</h1>
+              <p className="text-white/40 font-mono text-sm tracking-widest mt-2">Logged in as {user.email}</p>
             </div>
+            <button 
+              onClick={handleLogout}
+              className="p-3 glass rounded-xl text-white/30 hover:text-red-500 transition-colors"
+              title="Logout"
+            >
+              <LogOut size={20} />
+            </button>
           </div>
           
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => refreshData()}
-              className="p-3 glass rounded-xl text-white/40 hover:text-white transition-all"
-              title="Refresh from Server"
-            >
-              <RefreshCw size={20} className={syncStatus === 'syncing' ? 'animate-spin' : ''} />
-            </button>
-            <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10">
+          <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10">
             <button 
               onClick={() => setActiveTab('orders')}
               className={`px-8 py-3 rounded-xl font-bold uppercase tracking-widest text-xs transition-all ${activeTab === 'orders' ? 'bg-white text-black shadow-xl' : 'text-white/40 hover:text-white'}`}
@@ -261,10 +251,8 @@ export default function Admin() {
               Site Settings
             </button>
           </div>
-        </div>
-      </div>
 
-      {activeTab === 'products' && (
+          {activeTab === 'products' && (
             <div className="flex flex-col items-end gap-4">
               <div className="flex items-center gap-4">
                 <label className={`flex items-center gap-2 px-6 py-3 glass border-white/10 text-white rounded-xl font-bold uppercase tracking-widest transition-all cursor-pointer ${isProcessing ? 'opacity-50 cursor-wait' : 'hover:bg-white/10'}`}>
@@ -293,6 +281,7 @@ export default function Admin() {
               )}
             </div>
           )}
+        </div>
 
         <AnimatePresence mode="wait">
           {activeTab === 'products' ? (
@@ -311,7 +300,7 @@ export default function Admin() {
                         <div>
                           <label className="text-[10px] font-bold uppercase text-white/40 mb-1 block">Title</label>
                           <input 
-                            value={editForm.title || ''} 
+                            value={editForm.title} 
                             onChange={e => setEditForm({...editForm, title: e.target.value})}
                             className="w-full bg-white/5 border border-white/10 p-3 rounded-xl"
                           />
@@ -320,11 +309,8 @@ export default function Admin() {
                           <label className="text-[10px] font-bold uppercase text-white/40 mb-1 block">Price ($)</label>
                           <input 
                             type="number"
-                            value={isNaN(editForm.price) ? '' : editForm.price} 
-                            onChange={e => {
-                              const val = parseFloat(e.target.value);
-                              setEditForm({...editForm, price: isNaN(val) ? 0 : val});
-                            }}
+                            value={editForm.price} 
+                            onChange={e => setEditForm({...editForm, price: parseFloat(e.target.value)})}
                             className="w-full bg-white/5 border border-white/10 p-3 rounded-xl"
                           />
                         </div>
@@ -332,11 +318,8 @@ export default function Admin() {
                           <label className="text-[10px] font-bold uppercase text-white/40 mb-1 block">Offer (%)</label>
                           <input 
                             type="number"
-                            value={isNaN(editForm.offer) ? '' : (editForm.offer || 0)} 
-                            onChange={e => {
-                              const val = parseInt(e.target.value);
-                              setEditForm({...editForm, offer: isNaN(val) ? 0 : val});
-                            }}
+                            value={editForm.offer || 0} 
+                            onChange={e => setEditForm({...editForm, offer: parseInt(e.target.value)})}
                             className="w-full bg-white/5 border border-white/10 p-3 rounded-xl"
                           />
                         </div>
@@ -344,11 +327,8 @@ export default function Admin() {
                           <label className="text-[10px] font-bold uppercase text-white/40 mb-1 block">Stock Count</label>
                           <input 
                             type="number"
-                            value={isNaN(editForm.stockCount) ? '' : (editForm.stockCount || 0)} 
-                            onChange={e => {
-                              const val = parseInt(e.target.value);
-                              setEditForm({...editForm, stockCount: isNaN(val) ? 0 : val});
-                            }}
+                            value={editForm.stockCount || 0} 
+                            onChange={e => setEditForm({...editForm, stockCount: parseInt(e.target.value)})}
                             className="w-full bg-white/5 border border-white/10 p-3 rounded-xl"
                           />
                         </div>
@@ -374,7 +354,7 @@ export default function Admin() {
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input 
                               type="checkbox" 
-                              checked={editForm.isSpectrum || false}
+                              checked={editForm.isSpectrum}
                               onChange={e => setEditForm({...editForm, isSpectrum: e.target.checked})}
                               className="w-5 h-5 rounded border-white/10 bg-white/5 text-prism-mid"
                             />
@@ -383,7 +363,7 @@ export default function Admin() {
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input 
                               type="checkbox" 
-                              checked={editForm.isLimitedTime || false}
+                              checked={editForm.isLimitedTime}
                               onChange={e => setEditForm({...editForm, isLimitedTime: e.target.checked})}
                               className="w-5 h-5 rounded border-white/10 bg-white/5 text-orange-500"
                             />
@@ -392,7 +372,7 @@ export default function Admin() {
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input 
                               type="checkbox" 
-                              checked={editForm.isOutOfStock || false}
+                              checked={editForm.isOutOfStock}
                               onChange={e => setEditForm({...editForm, isOutOfStock: e.target.checked})}
                               className="w-5 h-5 rounded border-white/10 bg-white/5 text-red-500"
                             />
@@ -686,7 +666,7 @@ export default function Admin() {
                             />
                           </label>
                           <input 
-                            value={(bannerForm as any)[banner.id] || ''} 
+                            value={(bannerForm as any)[banner.id]} 
                             onChange={e => setBannerForm({ ...bannerForm, [banner.id]: e.target.value })}
                             className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-[10px] font-mono"
                             placeholder="Or paste image URL"
@@ -706,21 +686,10 @@ export default function Admin() {
 
                 <div className="mt-12 flex justify-end">
                   <button 
-                    onClick={async () => {
-                      try {
-                        setIsProcessing(true);
-                        updateBannerImages(bannerForm);
-                        await saveSettingsToServer(bannerForm);
-                      } catch (e) {
-                        setStorageWarning("Failed to save settings. Please try again.");
-                      } finally {
-                        setIsProcessing(false);
-                      }
-                    }}
-                    disabled={isProcessing}
-                    className={`px-12 py-4 bg-white text-black font-display font-bold rounded-2xl hover:bg-prism-mid hover:text-white transition-all flex items-center gap-3 ${isProcessing ? 'opacity-50 cursor-wait' : ''}`}
+                    onClick={() => updateBannerImages(bannerForm)}
+                    className="px-12 py-4 bg-white text-black font-display font-bold rounded-2xl hover:bg-prism-mid hover:text-white transition-all flex items-center gap-3"
                   >
-                    <Save size={20} /> {isProcessing ? 'Saving...' : 'Save Site Settings'}
+                    <Save size={20} /> Save Site Settings
                   </button>
                 </div>
               </div>

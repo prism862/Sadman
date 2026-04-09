@@ -1,0 +1,63 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: products
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required, 1-100 chars)
+    //   - price: number (required, positive)
+    //   - imageUrl: string (required, valid URL)
+    //   - updatedAt: timestamp (optional)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == "sadmanraisa123@gmail.com" && request.auth.token.email_verified == true);
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['name', 'price', 'imageUrl']) &&
+             data.keys().hasOnly(['name', 'price', 'imageUrl', 'updatedAt']) &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.price is number && data.price >= 0 &&
+             data.imageUrl is string && (data.imageUrl.matches("^https://.*") || data.imageUrl.matches("^http://.*"));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /products/{productId} {
+      // Publicly readable so customers can see products
+      allow read: if true;
+      
+      // Only admin can create or update products
+      allow create: if isAdmin() && isValidProduct(request.resource.data);
+      allow update: if isAdmin() && isValidProduct(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

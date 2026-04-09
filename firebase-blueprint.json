@@ -1,0 +1,36 @@
+{
+  "entities": {
+    "product": {
+      "title": "Product",
+      "description": "A product in the store with a name, price, and image URL.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the product."
+        },
+        "price": {
+          "type": "number",
+          "description": "The current price of the product."
+        },
+        "imageUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "The URL of the product image."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The last time the product was updated."
+        }
+      },
+      "required": ["name", "price", "imageUrl"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "product",
+      "description": "Collection of products available in the store."
+    }
+  }
+}
