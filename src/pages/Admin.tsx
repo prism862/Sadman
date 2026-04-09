@@ -55,21 +55,27 @@ export default function Admin() {
     setEditForm({ ...product });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setIsProcessing(true);
     try {
-      updateProduct(editForm);
+      await updateProduct(editForm);
       setEditingId(null);
       setStorageWarning(null);
     } catch (e) {
       if (e instanceof Error && e.name === 'QuotaExceededError') {
         setStorageWarning("Storage limit reached! Try using smaller images or external URLs.");
+      } else {
+        setError("Failed to save product. Please check your connection.");
       }
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
+    const newId = Date.now().toString();
     const newProd = {
-      id: Date.now().toString(),
+      id: newId,
       title: 'New Piece',
       price: 0,
       description: 'Description here',
@@ -83,8 +89,17 @@ export default function Admin() {
       stockCount: 10,
       isOutOfStock: false,
     };
-    addProduct(newProd);
-    startEdit(newProd);
+    
+    setIsProcessing(true);
+    try {
+      await addProduct(newProd);
+      setEditingId(newId);
+      setEditForm({ ...newProd });
+    } catch (err) {
+      setError("Failed to add product.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleBulkAdd = async (e: React.ChangeEvent<HTMLInputElement>) => {
