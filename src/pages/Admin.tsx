@@ -3,12 +3,12 @@ import { useApp } from '../AppContext';
 import { motion, Reorder, AnimatePresence } from 'motion/react';
 import { Plus, Edit, Trash2, Save, X, Image as ImageIcon, Tag, DollarSign, GripVertical, LogIn, LogOut } from 'lucide-react';
 import { formatPrice, compressImage } from '../lib/utils';
-import { auth } from '../firebase';
-import { signInAnonymously, signOut } from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 
 export default function Admin() {
-  const { products, loading, addProduct, updateProduct, deleteProduct, orders, updateOrderStatus, bannerImages, updateBannerImages } = useApp();
-  const [isAuthorized, setIsAuthorized] = useState(() => localStorage.getItem('prism_admin_auth') === 'true');
+  const { products, addProduct, updateProduct, deleteProduct, orders, updateOrderStatus, bannerImages, updateBannerImages, user } = useApp();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -19,34 +19,32 @@ export default function Admin() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [bannerForm, setBannerForm] = useState(bannerImages);
 
-  useEffect(() => {
-    // We still use anonymous auth to satisfy Firestore rules if needed, 
-    // but the UI is controlled by the password.
-    signInAnonymously(auth).catch(console.error);
-  }, []);
+  const isAdmin = user?.email === 'sadmanraisa123@gmail.com';
 
   useEffect(() => {
     setBannerForm(bannerImages);
   }, [bannerImages]);
 
-  const handleLogin = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setError('');
-    
-    // In a real app, this should be an environment variable or backend check
-    const ADMIN_PASS = 'sadman2025'; 
-    
-    if (password === ADMIN_PASS) {
-      setIsAuthorized(true);
-      localStorage.setItem('prism_admin_auth', 'true');
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === 'sadman2025') {
+      setIsAuthenticated(true);
+      setError('');
     } else {
-      setError('Incorrect password. Please try again.');
+      setError('Incorrect password');
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Login failed:", error);
     }
   };
 
   const handleLogout = async () => {
-    setIsAuthorized(false);
-    localStorage.removeItem('prism_admin_auth');
     await signOut(auth);
   };
 
@@ -55,27 +53,21 @@ export default function Admin() {
     setEditForm({ ...product });
   };
 
-  const handleSave = async () => {
-    setIsProcessing(true);
+  const handleSave = () => {
     try {
-      await updateProduct(editForm);
+      updateProduct(editForm);
       setEditingId(null);
       setStorageWarning(null);
     } catch (e) {
       if (e instanceof Error && e.name === 'QuotaExceededError') {
         setStorageWarning("Storage limit reached! Try using smaller images or external URLs.");
-      } else {
-        setError("Failed to save product. Please check your connection.");
       }
-    } finally {
-      setIsProcessing(false);
     }
   };
 
-  const handleAdd = async () => {
-    const newId = Date.now().toString();
+  const handleAdd = () => {
     const newProd = {
-      id: newId,
+      id: Date.now().toString(),
       title: 'New Piece',
       price: 0,
       description: 'Description here',
@@ -89,17 +81,8 @@ export default function Admin() {
       stockCount: 10,
       isOutOfStock: false,
     };
-    
-    setIsProcessing(true);
-    try {
-      await addProduct(newProd);
-      setEditingId(newId);
-      setEditForm({ ...newProd });
-    } catch (err) {
-      setError("Failed to add product.");
-    } finally {
-      setIsProcessing(false);
-    }
+    addProduct(newProd);
+    startEdit(newProd);
   };
 
   const handleBulkAdd = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -192,47 +175,59 @@ export default function Admin() {
     setIsProcessing(false);
   };
 
-  if (!isAuthorized) {
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-md w-full glass p-10 rounded-3xl text-center">
           <h1 className="text-3xl font-display font-black mb-8">ADMIN ACCESS</h1>
-          
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div className="relative">
-              <input 
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter Admin Password"
-                className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl px-6 text-center focus:border-prism-mid outline-none transition-all"
-                autoFocus
-              />
-            </div>
-            
-            <button 
-              type="submit"
-              className="w-full py-4 bg-white text-black font-display font-bold rounded-2xl hover:bg-prism-mid hover:text-white transition-all flex items-center justify-center gap-3"
-            >
-              <LogIn size={20} /> Enter Panel
-            </button>
-            
+          <form onSubmit={handleLogin} className="space-y-4 mb-8">
+            <input 
+              type="password" 
+              placeholder="Enter Password" 
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (error) setError('');
+              }}
+              className={`w-full px-6 py-4 bg-white/5 border rounded-2xl focus:outline-none transition-colors ${error ? 'border-red-500' : 'border-white/10 focus:border-prism-mid'}`}
+            />
             {error && (
               <motion.p 
                 initial={{ opacity: 0, y: -10 }} 
                 animate={{ opacity: 1, y: 0 }} 
-                className="text-red-500 text-xs font-bold uppercase tracking-widest mt-4"
+                className="text-red-500 text-xs font-bold uppercase tracking-widest"
               >
                 {error}
               </motion.p>
             )}
+            <button type="submit" className="w-full py-4 bg-white text-black font-display font-bold rounded-2xl hover:bg-prism-mid hover:text-white transition-all">
+              Unlock Panel
+            </button>
           </form>
+        </motion.div>
+      </div>
+    );
+  }
 
-          <div className="pt-8 mt-8 border-t border-white/5">
-            <p className="text-[10px] text-white/20 uppercase tracking-[0.2em]">
-              Restricted Area
+  if (!user || !isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black px-6">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-md w-full glass p-10 rounded-3xl text-center">
+          <h1 className="text-3xl font-display font-black mb-4">SECURE STORAGE</h1>
+          <p className="text-white/40 text-sm mb-8 uppercase tracking-widest font-bold">Sign in with authorized email to save changes to cloud</p>
+          
+          <button 
+            onClick={handleGoogleLogin} 
+            className="w-full py-4 bg-white text-black font-display font-bold rounded-2xl hover:bg-prism-mid hover:text-white transition-all flex items-center justify-center gap-3"
+          >
+            <LogIn size={20} /> Sign in with Google
+          </button>
+          
+          {user && !isAdmin && (
+            <p className="mt-6 text-red-500 text-[10px] font-bold uppercase tracking-widest bg-red-500/10 px-4 py-2 rounded-lg border border-red-500/20">
+              Access Denied: {user.email} is not authorized.
             </p>
-          </div>
+          )}
         </motion.div>
       </div>
     );
@@ -245,11 +240,11 @@ export default function Admin() {
           <div className="flex items-center gap-6">
             <div>
               <h1 className="text-5xl font-display font-black uppercase">Admin Panel</h1>
-              <p className="text-white/40 font-mono text-sm tracking-widest mt-2">Authorized Access</p>
+              <p className="text-white/40 font-mono text-sm tracking-widest mt-2">Manage your spectrum</p>
             </div>
             <button 
               onClick={handleLogout}
-              className="p-3 glass rounded-xl text-white/30 hover:text-red-500 transition-colors"
+              className="p-3 glass rounded-xl text-white/40 hover:text-red-500 transition-colors"
               title="Logout"
             >
               <LogOut size={20} />
@@ -317,7 +312,7 @@ export default function Admin() {
               exit={{ opacity: 0, x: 20 }}
               className="grid grid-cols-1 gap-6"
             >
-              {[...products].sort((a, b) => b.id.localeCompare(a.id)).map(product => (
+              {products.map(product => (
                 <div key={product.id} className="glass p-6 rounded-3xl">
                   {editingId === product.id ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -325,7 +320,7 @@ export default function Admin() {
                         <div>
                           <label className="text-[10px] font-bold uppercase text-white/40 mb-1 block">Title</label>
                           <input 
-                            value={editForm.title} 
+                            value={editForm.title || ''} 
                             onChange={e => setEditForm({...editForm, title: e.target.value})}
                             className="w-full bg-white/5 border border-white/10 p-3 rounded-xl"
                           />
@@ -334,8 +329,11 @@ export default function Admin() {
                           <label className="text-[10px] font-bold uppercase text-white/40 mb-1 block">Price ($)</label>
                           <input 
                             type="number"
-                            value={editForm.price} 
-                            onChange={e => setEditForm({...editForm, price: parseFloat(e.target.value)})}
+                            value={isNaN(editForm.price) ? '' : editForm.price} 
+                            onChange={e => {
+                              const val = parseFloat(e.target.value);
+                              setEditForm({...editForm, price: isNaN(val) ? 0 : val});
+                            }}
                             className="w-full bg-white/5 border border-white/10 p-3 rounded-xl"
                           />
                         </div>
@@ -343,8 +341,11 @@ export default function Admin() {
                           <label className="text-[10px] font-bold uppercase text-white/40 mb-1 block">Offer (%)</label>
                           <input 
                             type="number"
-                            value={editForm.offer || 0} 
-                            onChange={e => setEditForm({...editForm, offer: parseInt(e.target.value)})}
+                            value={isNaN(editForm.offer) ? '' : (editForm.offer || 0)} 
+                            onChange={e => {
+                              const val = parseInt(e.target.value);
+                              setEditForm({...editForm, offer: isNaN(val) ? 0 : val});
+                            }}
                             className="w-full bg-white/5 border border-white/10 p-3 rounded-xl"
                           />
                         </div>
@@ -352,8 +353,11 @@ export default function Admin() {
                           <label className="text-[10px] font-bold uppercase text-white/40 mb-1 block">Stock Count</label>
                           <input 
                             type="number"
-                            value={editForm.stockCount || 0} 
-                            onChange={e => setEditForm({...editForm, stockCount: parseInt(e.target.value)})}
+                            value={isNaN(editForm.stockCount) ? '' : (editForm.stockCount || 0)} 
+                            onChange={e => {
+                              const val = parseInt(e.target.value);
+                              setEditForm({...editForm, stockCount: isNaN(val) ? 0 : val});
+                            }}
                             className="w-full bg-white/5 border border-white/10 p-3 rounded-xl"
                           />
                         </div>
@@ -379,7 +383,7 @@ export default function Admin() {
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input 
                               type="checkbox" 
-                              checked={editForm.isSpectrum}
+                              checked={editForm.isSpectrum || false}
                               onChange={e => setEditForm({...editForm, isSpectrum: e.target.checked})}
                               className="w-5 h-5 rounded border-white/10 bg-white/5 text-prism-mid"
                             />
@@ -388,7 +392,7 @@ export default function Admin() {
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input 
                               type="checkbox" 
-                              checked={editForm.isLimitedTime}
+                              checked={editForm.isLimitedTime || false}
                               onChange={e => setEditForm({...editForm, isLimitedTime: e.target.checked})}
                               className="w-5 h-5 rounded border-white/10 bg-white/5 text-orange-500"
                             />
@@ -397,7 +401,7 @@ export default function Admin() {
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input 
                               type="checkbox" 
-                              checked={editForm.isOutOfStock}
+                              checked={editForm.isOutOfStock || false}
                               onChange={e => setEditForm({...editForm, isOutOfStock: e.target.checked})}
                               className="w-5 h-5 rounded border-white/10 bg-white/5 text-red-500"
                             />
@@ -691,7 +695,7 @@ export default function Admin() {
                             />
                           </label>
                           <input 
-                            value={(bannerForm as any)[banner.id]} 
+                            value={(bannerForm as any)[banner.id] || ''} 
                             onChange={e => setBannerForm({ ...bannerForm, [banner.id]: e.target.value })}
                             className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-[10px] font-mono"
                             placeholder="Or paste image URL"

@@ -7,15 +7,7 @@ import SmoothImage from '../components/SmoothImage';
 import { useApp } from '../AppContext';
 
 export default function Home() {
-  const { bannerImages, loading } = useApp();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="w-12 h-12 border-2 border-prism-mid border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  const { bannerImages } = useApp();
 
   return (
     <div className="relative min-h-screen pt-20 overflow-hidden">

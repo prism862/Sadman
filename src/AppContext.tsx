@@ -1,19 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Product, CartItem, Order } from './types';
 import { initialProducts } from './data/initialProducts';
-import { db, auth } from './firebase';
+import { db, auth } from './lib/firebase';
 import { 
   collection, 
   onSnapshot, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
   doc, 
-  query, 
-  orderBy,
-  setDoc,
-  getDocFromServer
+  setDoc, 
+  deleteDoc, 
+  updateDoc,
+  query,
+  orderBy
 } from 'firebase/firestore';
+import { onAuthStateChanged, User } from 'firebase/auth';
 
 enum OperationType {
   CREATE = 'create',
@@ -68,7 +67,6 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 
 interface AppContextType {
   products: Product[];
-  loading: boolean;
   cart: CartItem[];
   wishlist: Product[];
   recentlyViewed: string[];
@@ -78,6 +76,8 @@ interface AppContextType {
     essential: string;
     accessories: string;
   };
+  user: User | null;
+  isAuthReady: boolean;
   addToCart: (product: Product, size: string) => void;
   removeFromCart: (id: string, size: string) => void;
   clearCart: () => void;
@@ -96,65 +96,8 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
-
-  // Test connection
-  useEffect(() => {
-    async function testConnection() {
-      try {
-        await getDocFromServer(doc(db, 'test', 'connection'));
-      } catch (error) {
-        if (error instanceof Error && error.message.includes('the client is offline')) {
-          console.error("Please check your Firebase configuration. ");
-        }
-      }
-    }
-    testConnection();
-  }, []);
-
-  // Auth listener
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(() => {
-      setIsAuthReady(true);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Real-time products listener
-  useEffect(() => {
-    const path = 'products';
-    const q = query(collection(db, path));
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const prods: Product[] = [];
-      snapshot.forEach((doc) => {
-        prods.push({ id: doc.id, ...doc.data() } as Product);
-      });
-      setProducts(prods);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, path);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  // Real-time settings listener
-  useEffect(() => {
-    const path = 'settings/banners';
-    const unsubscribe = onSnapshot(doc(db, 'settings', 'banners'), (snapshot) => {
-      if (snapshot.exists()) {
-        setBannerImages(snapshot.data() as any);
-      }
-      setLoading(false);
-    }, (error) => {
-      // If document doesn't exist yet, it's fine, we use defaults
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
   const [bannerImages, setBannerImages] = useState({
     spectrum: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=1200',
     essential: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=800',
@@ -165,7 +108,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const saved = localStorage.getItem('prism_cart');
       return saved ? JSON.parse(saved) : [];
     } catch (e) {
-      console.error("Failed to load cart from localStorage:", e);
       return [];
     }
   });
@@ -174,7 +116,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const saved = localStorage.getItem('prism_wishlist');
       return saved ? JSON.parse(saved) : [];
     } catch (e) {
-      console.error("Failed to load wishlist from localStorage:", e);
       return [];
     }
   });
@@ -183,69 +124,85 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const saved = localStorage.getItem('prism_recently_viewed');
       return saved ? JSON.parse(saved) : [];
     } catch (e) {
-      console.error("Failed to load recentlyViewed from localStorage:", e);
       return [];
     }
   });
-  const [orders, setOrders] = useState<Order[]>(() => {
-    try {
-      const saved = localStorage.getItem('prism_orders');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      console.error("Failed to load orders from localStorage:", e);
-      return [];
-    }
-  });
+  const [orders, setOrders] = useState<Order[]>([]);
 
+  // Auth Listener
   useEffect(() => {
-    try {
-      localStorage.setItem('prism_products', JSON.stringify(products));
-    } catch (e) {
-      if (e instanceof Error && e.name === 'QuotaExceededError') {
-        console.error("Storage quota exceeded! Cannot save products.");
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setIsAuthReady(true);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Products Listener
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'products'), (snapshot) => {
+      const prods = snapshot.docs.map(doc => doc.data() as Product);
+      if (prods.length === 0) {
+        // Only seed if the current user is the authorized admin
+        if (auth.currentUser?.email === 'sadmanraisa123@gmail.com') {
+          initialProducts.forEach(async (p) => {
+            try {
+              await setDoc(doc(db, 'products', p.id), p);
+            } catch (e) {
+              console.error("Failed to seed product:", e);
+            }
+          });
+        }
+      } else {
+        setProducts(prods);
       }
-    }
-  }, [products]);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'products');
+    });
+    return () => unsubscribe();
+  }, []);
 
+  // Orders Listener
   useEffect(() => {
-    try {
-      localStorage.setItem('prism_cart', JSON.stringify(cart));
-    } catch (e) {
-      console.error("Failed to save cart:", e);
+    if (!user) {
+      setOrders([]);
+      return;
     }
+    const unsubscribe = onSnapshot(query(collection(db, 'orders'), orderBy('date', 'desc')), (snapshot) => {
+      setOrders(snapshot.docs.map(doc => doc.data() as Order));
+    }, (error) => {
+      // Only log if it's not a permission error (since non-admins won't have access)
+      if (!error.message.includes('permission-denied')) {
+        handleFirestoreError(error, OperationType.LIST, 'orders');
+      }
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  // Settings Listener
+  useEffect(() => {
+    const unsubscribe = onSnapshot(doc(db, 'settings', 'banners'), (snapshot) => {
+      if (snapshot.exists()) {
+        setBannerImages(snapshot.data() as any);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'settings/banners');
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // LocalStorage sync for client-side only state
+  useEffect(() => {
+    localStorage.setItem('prism_cart', JSON.stringify(cart));
   }, [cart]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('prism_wishlist', JSON.stringify(wishlist));
-    } catch (e) {
-      console.error("Failed to save wishlist:", e);
-    }
+    localStorage.setItem('prism_wishlist', JSON.stringify(wishlist));
   }, [wishlist]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('prism_recently_viewed', JSON.stringify(recentlyViewed));
-    } catch (e) {
-      console.error("Failed to save recentlyViewed:", e);
-    }
+    localStorage.setItem('prism_recently_viewed', JSON.stringify(recentlyViewed));
   }, [recentlyViewed]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('prism_orders', JSON.stringify(orders));
-    } catch (e) {
-      console.error("Failed to save orders:", e);
-    }
-  }, [orders]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('prism_banner_images', JSON.stringify(bannerImages));
-    } catch (e) {
-      console.error("Failed to save banner images:", e);
-    }
-  }, [bannerImages]);
 
   const addToCart = useCallback((product: Product, size: string) => {
     setCart(prev => {
@@ -286,55 +243,58 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const addOrder = useCallback((order: Order) => {
-    setOrders(prev => [order, ...prev]);
-    clearCart();
+  const addOrder = useCallback(async (order: Order) => {
+    try {
+      await setDoc(doc(db, 'orders', order.id), order);
+      clearCart();
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, `orders/${order.id}`);
+    }
   }, [clearCart]);
 
   const addProduct = useCallback(async (product: Product) => {
-    const path = `products/${product.id}`;
     try {
-      const { id, ...data } = product;
-      await setDoc(doc(db, 'products', id), data);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, path);
+      await setDoc(doc(db, 'products', product.id), product);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, `products/${product.id}`);
     }
   }, []);
 
   const updateProduct = useCallback(async (product: Product) => {
-    const path = `products/${product.id}`;
     try {
-      const { id, ...data } = product;
-      await setDoc(doc(db, 'products', id), data, { merge: true });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, path);
+      await setDoc(doc(db, 'products', product.id), product);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, `products/${product.id}`);
     }
   }, []);
 
   const deleteProduct = useCallback(async (id: string) => {
-    const path = `products/${id}`;
     try {
       await deleteDoc(doc(db, 'products', id));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, path);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, `products/${id}`);
     }
   }, []);
-  const updateOrderStatus = useCallback((orderId: string, status: Order['status']) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+
+  const updateOrderStatus = useCallback(async (orderId: string, status: Order['status']) => {
+    try {
+      await updateDoc(doc(db, 'orders', orderId), { status });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, `orders/${orderId}`);
+    }
   }, []);
 
   const updateBannerImages = useCallback(async (images: { spectrum: string; essential: string; accessories: string }) => {
-    const path = 'settings/banners';
     try {
       await setDoc(doc(db, 'settings', 'banners'), images);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, path);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, 'settings/banners');
     }
   }, []);
 
   return (
     <AppContext.Provider value={{
-      products, loading, cart, wishlist, recentlyViewed, orders, bannerImages,
+      products, cart, wishlist, recentlyViewed, orders, bannerImages, user, isAuthReady,
       addToCart, removeFromCart, clearCart,
       toggleWishlist, isInWishlist, addToRecentlyViewed,
       addOrder, addProduct, updateProduct, deleteProduct,

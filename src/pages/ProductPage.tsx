@@ -11,7 +11,7 @@ import RecentlyViewed from '../components/RecentlyViewed';
 export default function ProductPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { products, loading, addToCart, toggleWishlist, isInWishlist, addToRecentlyViewed } = useApp();
+  const { products, addToCart, toggleWishlist, isInWishlist, addToRecentlyViewed } = useApp();
   const product = products.find(p => p.id === id);
   const [selectedSize, setSelectedSize] = useState('');
   const [showSizeGuide, setShowSizeGuide] = useState(false);
@@ -50,15 +50,6 @@ export default function ProductPage() {
       addToRecentlyViewed(id);
     }
   }, [id, addToRecentlyViewed]);
-
-  if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto px-6 pt-40 pb-12 text-center">
-        <div className="w-16 h-16 border-4 border-prism-mid border-t-transparent rounded-full animate-spin mx-auto mb-8" />
-        <p className="text-white/40 uppercase tracking-widest text-xs font-bold">Retrieving Piece...</p>
-      </div>
-    );
-  }
 
   if (!product) return <div className="py-40 text-center">Product not found.</div>;
 

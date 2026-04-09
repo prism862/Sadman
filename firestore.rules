@@ -6,12 +6,41 @@ service cloud.firestore {
     // ===============================================================
     //
     // Collection: products
-    // Document ID: auto-generated
+    // Document ID: productId (string)
     // Fields:
-    //   - name: string (required, 1-100 chars)
-    //   - price: number (required, positive)
-    //   - imageUrl: string (required, valid URL)
-    //   - updatedAt: timestamp (optional)
+    //   - id: string (required)
+    //   - title: string (required)
+    //   - price: number (required)
+    //   - description: string
+    //   - images: list of strings (required)
+    //   - category: string
+    //   - sizes: list of strings
+    //   - colors: list of strings
+    //   - isSpectrum: bool
+    //   - spectrumImage: string
+    //   - isLimitedTime: bool
+    //   - stockCount: number
+    //   - isOutOfStock: bool
+    //   - offer: number
+    //
+    // Collection: orders
+    // Document ID: orderId (string)
+    // Fields:
+    //   - id: string (required)
+    //   - date: string (required)
+    //   - items: list (required)
+    //   - total: number (required)
+    //   - status: string (required, enum: pending, processing, shipped, delivered, refunded)
+    //   - customer: map (required)
+    //   - deliveryArea: string
+    //   - deliveryFee: number
+    //
+    // Collection: settings
+    // Document ID: banners
+    // Fields:
+    //   - spectrum: string
+    //   - essential: string
+    //   - accessories: string
     //
     // ===============================================================
 
@@ -29,19 +58,25 @@ service cloud.firestore {
     }
 
     function isValidProduct(data) {
-      return data.keys().hasAll(['title', 'price', 'images']) &&
-             data.title is string && data.title.size() >= 1 &&
-             data.price is number &&
-             data.images is list &&
-             (!('description' in data) || data.description is string) &&
-             (!('category' in data) || data.category is string) &&
-             (!('sizes' in data) || data.sizes is list) &&
-             (!('colors' in data) || data.colors is list) &&
-             (!('isSpectrum' in data) || data.isSpectrum is bool) &&
-             (!('spectrumImage' in data) || data.spectrumImage is string) &&
-             (!('isLimitedTime' in data) || data.isLimitedTime is bool) &&
-             (!('stockCount' in data) || data.stockCount is number) &&
-             (!('isOutOfStock' in data) || data.isOutOfStock is bool);
+      return data.keys().hasAll(['id', 'title', 'price', 'images']) &&
+             data.id is string &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.price is number && data.price >= 0 &&
+             data.images is list && data.images.size() <= 6;
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll(['id', 'date', 'items', 'total', 'status', 'customer']) &&
+             data.id is string &&
+             data.date is string &&
+             data.items is list &&
+             data.total is number && data.total >= 0 &&
+             data.status in ['pending', 'processing', 'shipped', 'delivered', 'refunded'] &&
+             data.customer is map;
+    }
+
+    function isValidSettings(data) {
+      return data.keys().hasAny(['spectrum', 'essential', 'accessories']);
     }
 
     // ===============================================================
@@ -49,30 +84,20 @@ service cloud.firestore {
     // ===============================================================
 
     match /products/{productId} {
-      // Publicly readable so customers can see products
       allow read: if true;
-      
-      // Allow writes for any authenticated user (including anonymous)
-      // This supports the password-only access requested by the user
-      allow create: if request.auth != null && isValidProduct(request.resource.data);
-      allow update: if request.auth != null && isValidProduct(request.resource.data);
-      allow delete: if request.auth != null;
-    }
-
-    match /settings/{settingId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin() && isValidProduct(request.resource.data);
     }
 
     match /orders/{orderId} {
-      allow read: if request.auth != null;
-      allow create: if true; // Allow customers to place orders
-      allow update, delete: if request.auth != null;
+      allow read: if isAdmin();
+      allow create: if isValidOrder(request.resource.data);
+      allow update: if isAdmin() && isValidOrder(request.resource.data);
+      allow delete: if isAdmin();
     }
 
-    // Default deny
-    match /{document=**} {
-      allow read, write: if false;
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidSettings(request.resource.data);
     }
   }
 }
