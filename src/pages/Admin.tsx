@@ -30,12 +30,18 @@ export default function Admin() {
   }, [bannerImages]);
 
   const handleLogin = async () => {
+    setError('');
     try {
       await signInWithPopup(auth, googleProvider);
-      setError('');
-    } catch (err) {
-      setError('Login failed. Please try again.');
-      console.error(err);
+    } catch (err: any) {
+      console.error('Login error:', err);
+      if (err.code === 'auth/popup-blocked') {
+        setError('Login popup was blocked by your browser. Please allow popups for this site.');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setError('This domain is not authorized for login. Please open the app in a new tab using the button in the top right.');
+      } else {
+        setError(`Login failed: ${err.message || 'Please try again.'}`);
+      }
     }
   };
 
@@ -186,6 +192,15 @@ export default function Admin() {
               >
                 <LogIn size={20} /> Sign in with Google
               </button>
+              
+              <div className="pt-8 border-t border-white/5">
+                <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] mb-4">Trouble logging in?</p>
+                <ul className="text-[10px] text-white/30 space-y-2 text-left list-disc pl-4">
+                  <li>Ensure popups are allowed in your browser.</li>
+                  <li>Try opening the app in a **New Tab** using the button in the top-right corner of the preview.</li>
+                  <li>Make sure you are using your admin Google account.</li>
+                </ul>
+              </div>
             </div>
           ) : (
             <div className="space-y-6">
