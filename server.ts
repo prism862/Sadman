@@ -15,8 +15,14 @@ const DB_PATH = path.join(__dirname, "database.json");
 async function readDB() {
   try {
     const data = await fs.readFile(DB_PATH, "utf-8");
+    if (!data || data.trim() === "") {
+      return { products: [], bannerImages: {} };
+    }
     return JSON.parse(data);
   } catch (error) {
+    if ((error as any).code === 'ENOENT') {
+      return { products: [], bannerImages: {} };
+    }
     console.error("Error reading database:", error);
     return { products: [], bannerImages: {} };
   }
@@ -38,6 +44,7 @@ async function startServer() {
 
   // API Routes for Data Persistence
   app.get("/api/data", async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     const data = await readDB();
     res.json(data);
   });

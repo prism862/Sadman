@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../AppContext';
 import { motion, Reorder, AnimatePresence } from 'motion/react';
-import { Plus, Edit, Trash2, Save, X, Image as ImageIcon, Tag, DollarSign, GripVertical } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Image as ImageIcon, Tag, DollarSign, GripVertical, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 import { formatPrice, compressImage } from '../lib/utils';
 
 export default function Admin() {
-  const { products, addProduct, updateProduct, deleteProduct, orders, updateOrderStatus, bannerImages, updateBannerImages } = useApp();
+  const { products, addProduct, updateProduct, deleteProduct, orders, updateOrderStatus, bannerImages, updateBannerImages, syncStatus, refreshData, saveProductsToServer, saveSettingsToServer } = useApp();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -36,15 +36,22 @@ export default function Admin() {
     setEditForm({ ...product });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     try {
+      setIsProcessing(true);
       updateProduct(editForm);
+      // Explicitly save to server
+      await saveProductsToServer();
       setEditingId(null);
       setStorageWarning(null);
     } catch (e) {
       if (e instanceof Error && e.name === 'QuotaExceededError') {
         setStorageWarning("Storage limit reached! Try using smaller images or external URLs.");
+      } else {
+        setStorageWarning("Failed to save to server. Please try again.");
       }
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -198,10 +205,38 @@ export default function Admin() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 mb-12">
           <div>
             <h1 className="text-5xl font-display font-black uppercase">Admin Panel</h1>
-            <p className="text-white/40 font-mono text-sm tracking-widest mt-2">Manage your spectrum</p>
+            <div className="flex items-center gap-3 mt-2">
+              <p className="text-white/40 font-mono text-sm tracking-widest">Manage your spectrum</p>
+              <div className="h-1 w-1 rounded-full bg-white/20" />
+              <div className="flex items-center gap-2">
+                {syncStatus === 'syncing' && (
+                  <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-prism-mid animate-pulse">
+                    <RefreshCw size={10} className="animate-spin" /> Syncing...
+                  </span>
+                )}
+                {syncStatus === 'synced' && (
+                  <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-green-500">
+                    <CheckCircle2 size={10} /> Saved to Cloud
+                  </span>
+                )}
+                {syncStatus === 'error' && (
+                  <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-red-500">
+                    <AlertCircle size={10} /> Sync Error
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
           
-          <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => refreshData()}
+              className="p-3 glass rounded-xl text-white/40 hover:text-white transition-all"
+              title="Refresh from Server"
+            >
+              <RefreshCw size={20} className={syncStatus === 'syncing' ? 'animate-spin' : ''} />
+            </button>
+            <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10">
             <button 
               onClick={() => setActiveTab('orders')}
               className={`px-8 py-3 rounded-xl font-bold uppercase tracking-widest text-xs transition-all ${activeTab === 'orders' ? 'bg-white text-black shadow-xl' : 'text-white/40 hover:text-white'}`}
@@ -221,8 +256,10 @@ export default function Admin() {
               Site Settings
             </button>
           </div>
+        </div>
+      </div>
 
-          {activeTab === 'products' && (
+      {activeTab === 'products' && (
             <div className="flex flex-col items-end gap-4">
               <div className="flex items-center gap-4">
                 <label className={`flex items-center gap-2 px-6 py-3 glass border-white/10 text-white rounded-xl font-bold uppercase tracking-widest transition-all cursor-pointer ${isProcessing ? 'opacity-50 cursor-wait' : 'hover:bg-white/10'}`}>
@@ -251,7 +288,6 @@ export default function Admin() {
               )}
             </div>
           )}
-        </div>
 
         <AnimatePresence mode="wait">
           {activeTab === 'products' ? (
@@ -665,10 +701,21 @@ export default function Admin() {
 
                 <div className="mt-12 flex justify-end">
                   <button 
-                    onClick={() => updateBannerImages(bannerForm)}
-                    className="px-12 py-4 bg-white text-black font-display font-bold rounded-2xl hover:bg-prism-mid hover:text-white transition-all flex items-center gap-3"
+                    onClick={async () => {
+                      try {
+                        setIsProcessing(true);
+                        updateBannerImages(bannerForm);
+                        await saveSettingsToServer(bannerForm);
+                      } catch (e) {
+                        setStorageWarning("Failed to save settings. Please try again.");
+                      } finally {
+                        setIsProcessing(false);
+                      }
+                    }}
+                    disabled={isProcessing}
+                    className={`px-12 py-4 bg-white text-black font-display font-bold rounded-2xl hover:bg-prism-mid hover:text-white transition-all flex items-center gap-3 ${isProcessing ? 'opacity-50 cursor-wait' : ''}`}
                   >
-                    <Save size={20} /> Save Site Settings
+                    <Save size={20} /> {isProcessing ? 'Saving...' : 'Save Site Settings'}
                   </button>
                 </div>
               </div>

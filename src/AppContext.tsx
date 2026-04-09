@@ -25,11 +25,17 @@ interface AppContextType {
   deleteProduct: (id: string) => void;
   updateOrderStatus: (orderId: string, status: Order['status']) => void;
   updateBannerImages: (images: { spectrum: string; essential: string; accessories: string }) => void;
+  syncStatus: 'idle' | 'syncing' | 'synced' | 'error';
+  refreshData: () => Promise<void>;
+  saveProductsToServer: (productsToSave?: Product[]) => Promise<void>;
+  saveSettingsToServer: (settingsToSave?: any) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [bannerImages, setBannerImages] = useState({
     spectrum: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=1200',
@@ -74,51 +80,92 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
 
   // Fetch initial data from server
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('/api/data');
-        const data = await response.json();
-        if (data.products) setProducts(data.products);
-        if (data.bannerImages) setBannerImages(data.bannerImages);
-      } catch (error) {
-        console.error("Failed to fetch data from server:", error);
+  const refreshData = useCallback(async () => {
+    try {
+      setSyncStatus('syncing');
+      const response = await fetch('/api/data');
+      const data = await response.json();
+      if (data.products && data.products.length > 0) {
+        setProducts(data.products);
       }
-    };
-    fetchData();
+      if (data.bannerImages && Object.keys(data.bannerImages).length > 0) {
+        setBannerImages(data.bannerImages);
+      }
+      setIsInitialized(true);
+      setSyncStatus('synced');
+      setTimeout(() => setSyncStatus('idle'), 2000);
+    } catch (error) {
+      console.error("Failed to fetch data from server:", error);
+      setIsInitialized(true);
+      setSyncStatus('error');
+    }
   }, []);
 
-  // Sync products with server
   useEffect(() => {
-    const syncProducts = async () => {
-      try {
-        await fetch('/api/products', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ products })
-        });
-      } catch (error) {
-        console.error("Failed to sync products:", error);
-      }
-    };
-    syncProducts();
+    refreshData();
+  }, [refreshData]);
+
+  // Sync products with server
+  const saveProductsToServer = useCallback(async (productsToSave?: Product[]) => {
+    const data = productsToSave || products;
+    try {
+      setSyncStatus('syncing');
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products: data })
+      });
+      if (!response.ok) throw new Error('Failed to save products');
+      setSyncStatus('synced');
+      setTimeout(() => setSyncStatus('idle'), 2000);
+    } catch (error) {
+      console.error("Failed to sync products:", error);
+      setSyncStatus('error');
+      throw error;
+    }
   }, [products]);
 
   // Sync settings with server
-  useEffect(() => {
-    const syncSettings = async () => {
-      try {
-        await fetch('/api/settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bannerImages })
-        });
-      } catch (error) {
-        console.error("Failed to sync settings:", error);
-      }
-    };
-    syncSettings();
+  const saveSettingsToServer = useCallback(async (settingsToSave?: any) => {
+    const data = settingsToSave || bannerImages;
+    try {
+      setSyncStatus('syncing');
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bannerImages: data })
+      });
+      if (!response.ok) throw new Error('Failed to save settings');
+      setSyncStatus('synced');
+      setTimeout(() => setSyncStatus('idle'), 2000);
+    } catch (error) {
+      console.error("Failed to sync settings:", error);
+      setSyncStatus('error');
+      throw error;
+    }
   }, [bannerImages]);
+
+  // Auto-sync products with server (debounced)
+  useEffect(() => {
+    if (!isInitialized) return;
+    
+    const timer = setTimeout(() => {
+      saveProductsToServer();
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [products, isInitialized, saveProductsToServer]);
+
+  // Auto-sync settings with server (debounced)
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const timer = setTimeout(() => {
+      saveSettingsToServer();
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [bannerImages, isInitialized, saveSettingsToServer]);
 
   useEffect(() => {
     localStorage.setItem('prism_cart', JSON.stringify(cart));
@@ -197,7 +244,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addToCart, removeFromCart, clearCart,
       toggleWishlist, isInWishlist, addToRecentlyViewed,
       addOrder, addProduct, updateProduct, deleteProduct,
-      updateOrderStatus, updateBannerImages
+      updateOrderStatus, updateBannerImages, syncStatus, refreshData,
+      saveProductsToServer, saveSettingsToServer
     }}>
       {children}
     </AppContext.Provider>
