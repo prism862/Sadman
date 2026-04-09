@@ -30,30 +30,11 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [products, setProducts] = useState<Product[]>(() => {
-    try {
-      const saved = localStorage.getItem('prism_products');
-      return saved ? JSON.parse(saved) : initialProducts;
-    } catch (e) {
-      console.error("Failed to load products from localStorage:", e);
-      return initialProducts;
-    }
-  });
-  const [bannerImages, setBannerImages] = useState(() => {
-    try {
-      const saved = localStorage.getItem('prism_banner_images');
-      return saved ? JSON.parse(saved) : {
-        spectrum: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=1200',
-        essential: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=800',
-        accessories: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&q=80&w=800'
-      };
-    } catch (e) {
-      return {
-        spectrum: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=1200',
-        essential: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=800',
-        accessories: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&q=80&w=800'
-      };
-    }
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [bannerImages, setBannerImages] = useState({
+    spectrum: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=1200',
+    essential: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=800',
+    accessories: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&q=80&w=800'
   });
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
@@ -92,55 +73,68 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
+  // Fetch initial data from server
   useEffect(() => {
-    try {
-      localStorage.setItem('prism_products', JSON.stringify(products));
-    } catch (e) {
-      if (e instanceof Error && e.name === 'QuotaExceededError') {
-        console.error("Storage quota exceeded! Cannot save products.");
+    const fetchData = async () => {
+      try {
+        const response = await fetch('/api/data');
+        const data = await response.json();
+        if (data.products) setProducts(data.products);
+        if (data.bannerImages) setBannerImages(data.bannerImages);
+      } catch (error) {
+        console.error("Failed to fetch data from server:", error);
       }
-    }
+    };
+    fetchData();
+  }, []);
+
+  // Sync products with server
+  useEffect(() => {
+    const syncProducts = async () => {
+      try {
+        await fetch('/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ products })
+        });
+      } catch (error) {
+        console.error("Failed to sync products:", error);
+      }
+    };
+    syncProducts();
   }, [products]);
 
+  // Sync settings with server
   useEffect(() => {
-    try {
-      localStorage.setItem('prism_cart', JSON.stringify(cart));
-    } catch (e) {
-      console.error("Failed to save cart:", e);
-    }
+    const syncSettings = async () => {
+      try {
+        await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bannerImages })
+        });
+      } catch (error) {
+        console.error("Failed to sync settings:", error);
+      }
+    };
+    syncSettings();
+  }, [bannerImages]);
+
+  useEffect(() => {
+    localStorage.setItem('prism_cart', JSON.stringify(cart));
   }, [cart]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('prism_wishlist', JSON.stringify(wishlist));
-    } catch (e) {
-      console.error("Failed to save wishlist:", e);
-    }
+    localStorage.setItem('prism_wishlist', JSON.stringify(wishlist));
   }, [wishlist]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('prism_recently_viewed', JSON.stringify(recentlyViewed));
-    } catch (e) {
-      console.error("Failed to save recentlyViewed:", e);
-    }
+    localStorage.setItem('prism_recently_viewed', JSON.stringify(recentlyViewed));
   }, [recentlyViewed]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('prism_orders', JSON.stringify(orders));
-    } catch (e) {
-      console.error("Failed to save orders:", e);
-    }
+    localStorage.setItem('prism_orders', JSON.stringify(orders));
   }, [orders]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('prism_banner_images', JSON.stringify(bannerImages));
-    } catch (e) {
-      console.error("Failed to save banner images:", e);
-    }
-  }, [bannerImages]);
 
   const addToCart = useCallback((product: Product, size: string) => {
     setCart(prev => {

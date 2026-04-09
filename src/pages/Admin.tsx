@@ -270,7 +270,7 @@ export default function Admin() {
                         <div>
                           <label className="text-[10px] font-bold uppercase text-white/40 mb-1 block">Title</label>
                           <input 
-                            value={editForm.title} 
+                            value={editForm.title || ''} 
                             onChange={e => setEditForm({...editForm, title: e.target.value})}
                             className="w-full bg-white/5 border border-white/10 p-3 rounded-xl"
                           />
@@ -279,8 +279,11 @@ export default function Admin() {
                           <label className="text-[10px] font-bold uppercase text-white/40 mb-1 block">Price ($)</label>
                           <input 
                             type="number"
-                            value={editForm.price} 
-                            onChange={e => setEditForm({...editForm, price: parseFloat(e.target.value)})}
+                            value={isNaN(editForm.price) ? '' : editForm.price} 
+                            onChange={e => {
+                              const val = parseFloat(e.target.value);
+                              setEditForm({...editForm, price: isNaN(val) ? 0 : val});
+                            }}
                             className="w-full bg-white/5 border border-white/10 p-3 rounded-xl"
                           />
                         </div>
@@ -288,8 +291,11 @@ export default function Admin() {
                           <label className="text-[10px] font-bold uppercase text-white/40 mb-1 block">Offer (%)</label>
                           <input 
                             type="number"
-                            value={editForm.offer || 0} 
-                            onChange={e => setEditForm({...editForm, offer: parseInt(e.target.value)})}
+                            value={isNaN(editForm.offer) ? '' : (editForm.offer || 0)} 
+                            onChange={e => {
+                              const val = parseInt(e.target.value);
+                              setEditForm({...editForm, offer: isNaN(val) ? 0 : val});
+                            }}
                             className="w-full bg-white/5 border border-white/10 p-3 rounded-xl"
                           />
                         </div>
@@ -297,8 +303,11 @@ export default function Admin() {
                           <label className="text-[10px] font-bold uppercase text-white/40 mb-1 block">Stock Count</label>
                           <input 
                             type="number"
-                            value={editForm.stockCount || 0} 
-                            onChange={e => setEditForm({...editForm, stockCount: parseInt(e.target.value)})}
+                            value={isNaN(editForm.stockCount) ? '' : (editForm.stockCount || 0)} 
+                            onChange={e => {
+                              const val = parseInt(e.target.value);
+                              setEditForm({...editForm, stockCount: isNaN(val) ? 0 : val});
+                            }}
                             className="w-full bg-white/5 border border-white/10 p-3 rounded-xl"
                           />
                         </div>
@@ -324,7 +333,7 @@ export default function Admin() {
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input 
                               type="checkbox" 
-                              checked={editForm.isSpectrum}
+                              checked={editForm.isSpectrum || false}
                               onChange={e => setEditForm({...editForm, isSpectrum: e.target.checked})}
                               className="w-5 h-5 rounded border-white/10 bg-white/5 text-prism-mid"
                             />
@@ -333,7 +342,7 @@ export default function Admin() {
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input 
                               type="checkbox" 
-                              checked={editForm.isLimitedTime}
+                              checked={editForm.isLimitedTime || false}
                               onChange={e => setEditForm({...editForm, isLimitedTime: e.target.checked})}
                               className="w-5 h-5 rounded border-white/10 bg-white/5 text-orange-500"
                             />
@@ -342,7 +351,7 @@ export default function Admin() {
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input 
                               type="checkbox" 
-                              checked={editForm.isOutOfStock}
+                              checked={editForm.isOutOfStock || false}
                               onChange={e => setEditForm({...editForm, isOutOfStock: e.target.checked})}
                               className="w-5 h-5 rounded border-white/10 bg-white/5 text-red-500"
                             />
@@ -636,7 +645,7 @@ export default function Admin() {
                             />
                           </label>
                           <input 
-                            value={(bannerForm as any)[banner.id]} 
+                            value={(bannerForm as any)[banner.id] || ''} 
                             onChange={e => setBannerForm({ ...bannerForm, [banner.id]: e.target.value })}
                             className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-[10px] font-mono"
                             placeholder="Or paste image URL"
