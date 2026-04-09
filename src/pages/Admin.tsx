@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../AppContext';
 import { motion, Reorder, AnimatePresence } from 'motion/react';
 import { Plus, Edit, Trash2, Save, X, Image as ImageIcon, Tag, DollarSign, GripVertical } from 'lucide-react';
-import { formatPrice } from '../lib/utils';
+import { formatPrice, compressImage } from '../lib/utils';
 
 export default function Admin() {
   const { products, addProduct, updateProduct, deleteProduct, orders, updateOrderStatus } = useApp();
@@ -13,6 +13,8 @@ export default function Admin() {
   const [editForm, setEditForm] = useState<any>(null);
   const [imageToDelete, setImageToDelete] = useState<{idx: number} | null>(null);
   const [activeTab, setActiveTab] = useState<'orders' | 'products'>('orders');
+  const [storageWarning, setStorageWarning] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,8 +32,15 @@ export default function Admin() {
   };
 
   const handleSave = () => {
-    updateProduct(editForm);
-    setEditingId(null);
+    try {
+      updateProduct(editForm);
+      setEditingId(null);
+      setStorageWarning(null);
+    } catch (e) {
+      if (e instanceof Error && e.name === 'QuotaExceededError') {
+        setStorageWarning("Storage limit reached! Try using smaller images or external URLs.");
+      }
+    }
   };
 
   const handleAdd = () => {
@@ -53,56 +62,77 @@ export default function Admin() {
     startEdit(newProd);
   };
 
-  const handleBulkAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBulkAdd = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
-    Array.from(files).forEach((file: File, index: number) => {
+    setIsProcessing(true);
+    const filesArray: File[] = Array.from(files);
+
+    for (let i = 0; i < filesArray.length; i++) {
+      const file: File = filesArray[i];
       const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        const newProd = {
-          id: (Date.now() + index).toString() + '-' + Math.random().toString(36).substr(2, 5),
-          title: file.name.split('.')[0] || 'New Piece',
-          price: 0,
-          description: 'Description here',
-          images: [base64String],
-          category: 'T-Shirts',
-          sizes: ['S', 'M', 'L'],
-          colors: [],
-          isSpectrum: false,
-          spectrumImage: '',
-          stockCount: 10,
-          isOutOfStock: false,
-        };
-        addProduct(newProd);
+      
+      const base64 = await new Promise<string>((resolve) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+
+      const compressed = await compressImage(base64);
+      
+      const newProd = {
+        id: (Date.now() + i).toString() + '-' + Math.random().toString(36).substr(2, 5),
+        title: file.name.split('.')[0] || 'New Piece',
+        price: 0,
+        description: 'Description here',
+        images: [compressed],
+        category: 'T-Shirts',
+        sizes: ['S', 'M', 'L'],
+        colors: [],
+        isSpectrum: false,
+        spectrumImage: '',
+        stockCount: 10,
+        isOutOfStock: false,
       };
-      reader.readAsDataURL(file);
-    });
+      addProduct(newProd);
+    }
+    setIsProcessing(false);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'images' | 'spectrumImage') => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'images' | 'spectrumImage') => {
     const files = e.target.files;
     if (!files) return;
 
-    Array.from(files).forEach((file: File) => {
+    setIsProcessing(true);
+    const filesArray: File[] = Array.from(files);
+
+    for (const file of filesArray) {
+      if (field === 'images' && editForm.images.length >= 6) {
+        setStorageWarning("Maximum 6 images allowed per product.");
+        break;
+      }
+
       const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        if (field === 'images') {
-          setEditForm((prev: any) => ({
-            ...prev,
-            images: [...prev.images, base64String]
-          }));
-        } else {
-          setEditForm((prev: any) => ({
-            ...prev,
-            spectrumImage: base64String
-          }));
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+      const base64 = await new Promise<string>((resolve) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+
+      const compressed = await compressImage(base64);
+
+      if (field === 'images') {
+        setEditForm((prev: any) => ({
+          ...prev,
+          images: [...prev.images, compressed].slice(0, 6)
+        }));
+      } else {
+        setEditForm((prev: any) => ({
+          ...prev,
+          spectrumImage: compressed
+        }));
+      }
+    }
+    setIsProcessing(false);
   };
 
   if (!isAuthenticated) {
@@ -164,20 +194,32 @@ export default function Admin() {
           </div>
 
           {activeTab === 'products' && (
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 px-6 py-3 glass border-white/10 text-white rounded-xl font-bold uppercase tracking-widest hover:bg-white/10 transition-all cursor-pointer">
-                <ImageIcon size={20} /> Add from Photos
-                <input 
-                  type="file" 
-                  multiple 
-                  accept="image/*" 
-                  className="hidden" 
-                  onChange={handleBulkAdd} 
-                />
-              </label>
-              <button onClick={handleAdd} className="flex items-center gap-2 px-6 py-3 bg-prism-mid text-white rounded-xl font-bold uppercase tracking-widest hover:bg-prism-start transition-all">
-                <Plus size={20} /> Add Piece
-              </button>
+            <div className="flex flex-col items-end gap-4">
+              <div className="flex items-center gap-4">
+                <label className={`flex items-center gap-2 px-6 py-3 glass border-white/10 text-white rounded-xl font-bold uppercase tracking-widest transition-all cursor-pointer ${isProcessing ? 'opacity-50 cursor-wait' : 'hover:bg-white/10'}`}>
+                  {isProcessing ? 'Processing...' : <><ImageIcon size={20} /> Add from Photos</>}
+                  <input 
+                    type="file" 
+                    multiple 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={handleBulkAdd} 
+                    disabled={isProcessing}
+                  />
+                </label>
+                <button onClick={handleAdd} className="flex items-center gap-2 px-6 py-3 bg-prism-mid text-white rounded-xl font-bold uppercase tracking-widest hover:bg-prism-start transition-all">
+                  <Plus size={20} /> Add Piece
+                </button>
+              </div>
+              {storageWarning && (
+                <motion.p 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="text-red-500 text-[10px] font-bold uppercase tracking-widest bg-red-500/10 px-4 py-2 rounded-lg border border-red-500/20"
+                >
+                  {storageWarning}
+                </motion.p>
+              )}
             </div>
           )}
         </div>
@@ -314,14 +356,16 @@ export default function Admin() {
                           </div>
                           
                           <div className="grid grid-cols-1 gap-4">
-                            <label className="group cursor-pointer relative">
+                            <label className={`group cursor-pointer relative ${isProcessing || editForm.images.length >= 6 ? 'opacity-50 cursor-not-allowed' : ''}`}>
                               <div className="w-full py-8 glass border-2 border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center gap-3 group-hover:border-prism-mid/50 group-hover:bg-prism-mid/5 transition-all">
                                 <div className="p-3 rounded-full bg-white/5 group-hover:bg-prism-mid/20 transition-colors">
                                   <ImageIcon size={24} className="text-white/40 group-hover:text-prism-mid transition-colors" />
                                 </div>
                                 <div className="text-center">
-                                  <p className="text-xs font-bold uppercase tracking-widest mb-1">Upload from Gallery</p>
-                                  <p className="text-[10px] text-white/20 uppercase tracking-widest">Supports multiple photos & files</p>
+                                  <p className="text-xs font-bold uppercase tracking-widest mb-1">
+                                    {isProcessing ? 'Compressing...' : editForm.images.length >= 6 ? 'Limit Reached (6)' : 'Upload from Gallery'}
+                                  </p>
+                                  <p className="text-[10px] text-white/20 uppercase tracking-widest">Max 6 photos per product</p>
                                 </div>
                               </div>
                               <input 
@@ -330,6 +374,7 @@ export default function Admin() {
                                 accept="image/*" 
                                 className="hidden" 
                                 onChange={(e) => handleImageUpload(e, 'images')} 
+                                disabled={isProcessing || editForm.images.length >= 6}
                               />
                             </label>
     

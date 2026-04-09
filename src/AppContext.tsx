@@ -25,44 +25,91 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('prism_products');
-    return saved ? JSON.parse(saved) : initialProducts;
+    try {
+      const saved = localStorage.getItem('prism_products');
+      return saved ? JSON.parse(saved) : initialProducts;
+    } catch (e) {
+      console.error("Failed to load products from localStorage:", e);
+      return initialProducts;
+    }
   });
   const [cart, setCart] = useState<CartItem[]>(() => {
-    const saved = localStorage.getItem('prism_cart');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('prism_cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Failed to load cart from localStorage:", e);
+      return [];
+    }
   });
   const [wishlist, setWishlist] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('prism_wishlist');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('prism_wishlist');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Failed to load wishlist from localStorage:", e);
+      return [];
+    }
   });
   const [recentlyViewed, setRecentlyViewed] = useState<string[]>(() => {
-    const saved = localStorage.getItem('prism_recently_viewed');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('prism_recently_viewed');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Failed to load recentlyViewed from localStorage:", e);
+      return [];
+    }
   });
   const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem('prism_orders');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('prism_orders');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Failed to load orders from localStorage:", e);
+      return [];
+    }
   });
 
   useEffect(() => {
-    localStorage.setItem('prism_products', JSON.stringify(products));
+    try {
+      localStorage.setItem('prism_products', JSON.stringify(products));
+    } catch (e) {
+      if (e instanceof Error && e.name === 'QuotaExceededError') {
+        console.error("Storage quota exceeded! Cannot save products.");
+      }
+    }
   }, [products]);
 
   useEffect(() => {
-    localStorage.setItem('prism_cart', JSON.stringify(cart));
+    try {
+      localStorage.setItem('prism_cart', JSON.stringify(cart));
+    } catch (e) {
+      console.error("Failed to save cart:", e);
+    }
   }, [cart]);
 
   useEffect(() => {
-    localStorage.setItem('prism_wishlist', JSON.stringify(wishlist));
+    try {
+      localStorage.setItem('prism_wishlist', JSON.stringify(wishlist));
+    } catch (e) {
+      console.error("Failed to save wishlist:", e);
+    }
   }, [wishlist]);
 
   useEffect(() => {
-    localStorage.setItem('prism_recently_viewed', JSON.stringify(recentlyViewed));
+    try {
+      localStorage.setItem('prism_recently_viewed', JSON.stringify(recentlyViewed));
+    } catch (e) {
+      console.error("Failed to save recentlyViewed:", e);
+    }
   }, [recentlyViewed]);
 
   useEffect(() => {
-    localStorage.setItem('prism_orders', JSON.stringify(orders));
+    try {
+      localStorage.setItem('prism_orders', JSON.stringify(orders));
+    } catch (e) {
+      console.error("Failed to save orders:", e);
+    }
   }, [orders]);
 
   const addToCart = useCallback((product: Product, size: string) => {
