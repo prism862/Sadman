@@ -137,8 +137,13 @@ export default function Shop() {
                           Spectrum
                         </span>
                       )}
+                      {product.isLimitedTime && (
+                        <span className="px-3 py-1 bg-orange-500 text-white text-[10px] font-bold uppercase tracking-tighter rounded-full shadow-lg">
+                          Limited Time
+                        </span>
+                      )}
                       {product.offer && (
-                        <span className="px-3 py-1 bg-white text-black text-[10px] font-bold uppercase tracking-tighter rounded-full">
+                        <span className="px-3 py-1 bg-prism-start text-white text-[10px] font-bold uppercase tracking-tighter rounded-full shadow-lg">
                           -{product.offer}% OFF
                         </span>
                       )}

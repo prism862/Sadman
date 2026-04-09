@@ -4,8 +4,11 @@ import { ArrowRight, Sparkles, Instagram } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { fadeInUp, fadeIn, scaleIn, staggerContainer, staggerItem } from '../constants/animations';
 import SmoothImage from '../components/SmoothImage';
+import { useApp } from '../AppContext';
 
 export default function Home() {
+  const { bannerImages } = useApp();
+
   return (
     <div className="relative min-h-screen pt-20 overflow-hidden">
       {/* Background Light Effects */}
@@ -213,7 +216,7 @@ export default function Home() {
             className="relative h-[700px] rounded-[3rem] overflow-hidden group cursor-pointer"
           >
             <SmoothImage 
-              src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=1200" 
+              src={bannerImages.spectrum} 
               alt="Model"
               className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
               containerClassName="w-full h-full"
@@ -238,7 +241,7 @@ export default function Home() {
               className="relative flex-1 rounded-[3rem] overflow-hidden group cursor-pointer"
             >
               <SmoothImage 
-                src="https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=800" 
+                src={bannerImages.essential} 
                 alt="Model"
                 className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                 containerClassName="w-full h-full"
@@ -260,7 +263,7 @@ export default function Home() {
               className="relative flex-1 rounded-[3rem] overflow-hidden group cursor-pointer"
             >
               <SmoothImage 
-                src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&q=80&w=800" 
+                src={bannerImages.accessories} 
                 alt="Model"
                 className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                 containerClassName="w-full h-full"

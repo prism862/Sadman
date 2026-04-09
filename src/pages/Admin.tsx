@@ -1,20 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../AppContext';
 import { motion, Reorder, AnimatePresence } from 'motion/react';
 import { Plus, Edit, Trash2, Save, X, Image as ImageIcon, Tag, DollarSign, GripVertical } from 'lucide-react';
 import { formatPrice, compressImage } from '../lib/utils';
 
 export default function Admin() {
-  const { products, addProduct, updateProduct, deleteProduct, orders, updateOrderStatus } = useApp();
+  const { products, addProduct, updateProduct, deleteProduct, orders, updateOrderStatus, bannerImages, updateBannerImages } = useApp();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>(null);
   const [imageToDelete, setImageToDelete] = useState<{idx: number} | null>(null);
-  const [activeTab, setActiveTab] = useState<'orders' | 'products'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'settings'>('orders');
   const [storageWarning, setStorageWarning] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [bannerForm, setBannerForm] = useState(bannerImages);
+
+  useEffect(() => {
+    setBannerForm(bannerImages);
+  }, [bannerImages]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +60,7 @@ export default function Admin() {
       colors: [],
       isSpectrum: false,
       spectrumImage: '',
+      isLimitedTime: false,
       stockCount: 10,
       isOutOfStock: false,
     };
@@ -91,6 +97,7 @@ export default function Admin() {
         colors: [],
         isSpectrum: false,
         spectrumImage: '',
+        isLimitedTime: false,
         stockCount: 10,
         isOutOfStock: false,
       };
@@ -132,6 +139,22 @@ export default function Admin() {
         }));
       }
     }
+    setIsProcessing(false);
+  };
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>, key: keyof typeof bannerImages) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsProcessing(true);
+    const reader = new FileReader();
+    const base64 = await new Promise<string>((resolve) => {
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(file);
+    });
+
+    const compressed = await compressImage(base64, 1200, 0.7);
+    setBannerForm(prev => ({ ...prev, [key]: compressed }));
     setIsProcessing(false);
   };
 
@@ -190,6 +213,12 @@ export default function Admin() {
               className={`px-8 py-3 rounded-xl font-bold uppercase tracking-widest text-xs transition-all ${activeTab === 'products' ? 'bg-white text-black shadow-xl' : 'text-white/40 hover:text-white'}`}
             >
               Inventory ({products.length})
+            </button>
+            <button 
+              onClick={() => setActiveTab('settings')}
+              className={`px-8 py-3 rounded-xl font-bold uppercase tracking-widest text-xs transition-all ${activeTab === 'settings' ? 'bg-white text-black shadow-xl' : 'text-white/40 hover:text-white'}`}
+            >
+              Site Settings
             </button>
           </div>
 
@@ -300,6 +329,15 @@ export default function Admin() {
                               className="w-5 h-5 rounded border-white/10 bg-white/5 text-prism-mid"
                             />
                             <span className="text-sm font-bold uppercase tracking-widest">Spectrum Series</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              checked={editForm.isLimitedTime}
+                              onChange={e => setEditForm({...editForm, isLimitedTime: e.target.checked})}
+                              className="w-5 h-5 rounded border-white/10 bg-white/5 text-orange-500"
+                            />
+                            <span className="text-sm font-bold uppercase tracking-widest text-orange-500">Limited Time Offer</span>
                           </label>
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input 
@@ -478,7 +516,7 @@ export default function Admin() {
               ))}
               {products.length === 0 && <p className="text-white/30 text-center py-12">No products in inventory.</p>}
             </motion.div>
-          ) : (
+          ) : activeTab === 'orders' ? (
             <motion.div 
               key="orders"
               initial={{ opacity: 0, x: 20 }}
@@ -519,7 +557,7 @@ export default function Admin() {
                           </div>
                         </div>
                       </div>
-
+ 
                       <div className="space-y-3">
                         <h4 className="text-[10px] font-bold uppercase tracking-widest text-white/30">Order Items</h4>
                         {order.items.map((item, i) => (
@@ -534,7 +572,7 @@ export default function Admin() {
                         ))}
                       </div>
                     </div>
-
+ 
                     <div className="lg:w-64 flex flex-col justify-between items-end gap-8">
                       <div className="text-right">
                         <h4 className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-2">Total Amount</h4>
@@ -561,6 +599,72 @@ export default function Admin() {
               ))}
               {orders.length === 0 && <p className="text-white/30 text-center py-12">No orders yet.</p>}
             </motion.div>
+          ) : (
+            <motion.div
+              key="settings"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="max-w-4xl mx-auto space-y-8"
+            >
+              <div className="glass p-8 rounded-[2.5rem] border border-white/5">
+                <h2 className="text-2xl font-display font-bold mb-8 uppercase tracking-tight">Banner Images</h2>
+                
+                <div className="space-y-8">
+                  {[
+                    { id: 'spectrum', label: 'Spectrum Series Banner' },
+                    { id: 'essential', label: 'Essential Prism Banner' },
+                    { id: 'accessories', label: 'Accessories Banner' }
+                  ].map((banner) => (
+                    <div key={banner.id} className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center p-6 bg-white/5 rounded-3xl border border-white/5">
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-4 block">{banner.label}</label>
+                        <div className="space-y-4">
+                          <label className={`group cursor-pointer relative ${isProcessing ? 'opacity-50 cursor-wait' : ''}`}>
+                            <div className="w-full py-6 glass border-2 border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center gap-2 group-hover:border-prism-mid/50 group-hover:bg-prism-mid/5 transition-all">
+                              <ImageIcon size={20} className="text-white/40 group-hover:text-prism-mid transition-colors" />
+                              <p className="text-[10px] font-bold uppercase tracking-widest">
+                                {isProcessing ? 'Processing...' : 'Upload New Image'}
+                              </p>
+                            </div>
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="hidden" 
+                              onChange={(e) => handleBannerUpload(e, banner.id as any)}
+                              disabled={isProcessing}
+                            />
+                          </label>
+                          <input 
+                            value={(bannerForm as any)[banner.id]} 
+                            onChange={e => setBannerForm({ ...bannerForm, [banner.id]: e.target.value })}
+                            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-[10px] font-mono"
+                            placeholder="Or paste image URL"
+                          />
+                        </div>
+                      </div>
+                      <div className="relative aspect-video rounded-2xl overflow-hidden border border-white/10">
+                        <img 
+                          src={(bannerForm as any)[banner.id]} 
+                          className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-12 flex justify-end">
+                  <button 
+                    onClick={() => updateBannerImages(bannerForm)}
+                    className="px-12 py-4 bg-white text-black font-display font-bold rounded-2xl hover:bg-prism-mid hover:text-white transition-all flex items-center gap-3"
+                  >
+                    <Save size={20} /> Save Site Settings
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+
           )}
         </AnimatePresence>
       </div>

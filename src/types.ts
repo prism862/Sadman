@@ -9,6 +9,7 @@ export interface Product {
   isSpectrum?: boolean;
   spectrumImage?: string;
   offer?: number; // percentage off
+  isLimitedTime?: boolean;
   stockCount?: number;
   isOutOfStock?: boolean;
 }

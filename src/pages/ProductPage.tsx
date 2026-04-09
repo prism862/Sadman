@@ -169,6 +169,9 @@ export default function ProductPage() {
               {product.isSpectrum && (
                 <span className="px-2 py-1 glass border-white/20 text-[10px] font-bold uppercase tracking-widest prism-text">Spectrum Series</span>
               )}
+              {product.isLimitedTime && (
+                <span className="px-2 py-1 bg-orange-500 text-white text-[10px] font-bold uppercase tracking-widest rounded-full shadow-lg">Limited Time</span>
+              )}
             </div>
             <h1 className="text-4xl md:text-6xl font-display font-bold tracking-tighter mb-4">{product.title}</h1>
             <div className="flex items-center gap-6">
@@ -406,11 +409,18 @@ export default function ProductPage() {
                       containerClassName="w-full h-full"
                       loading="lazy"
                     />
-                    {item.offer && (
-                      <div className="absolute top-4 left-4 px-3 py-1 bg-prism-start text-white text-[10px] font-bold uppercase tracking-widest rounded-full shadow-lg">
-                        -{item.offer}%
-                      </div>
-                    )}
+                    <div className="absolute top-4 left-4 flex flex-col gap-2">
+                      {item.isLimitedTime && (
+                        <div className="px-3 py-1 bg-orange-500 text-white text-[10px] font-bold uppercase tracking-widest rounded-full shadow-lg">
+                          Limited
+                        </div>
+                      )}
+                      {item.offer && (
+                        <div className="px-3 py-1 bg-prism-start text-white text-[10px] font-bold uppercase tracking-widest rounded-full shadow-lg">
+                          -{item.offer}%
+                        </div>
+                      )}
+                    </div>
                   </motion.div>
                   <h3 className="text-sm font-bold uppercase tracking-tight group-hover:prism-text transition-colors">{item.title}</h3>
                   <div className="flex items-center gap-3 mt-1">

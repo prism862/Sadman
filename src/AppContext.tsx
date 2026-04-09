@@ -8,6 +8,11 @@ interface AppContextType {
   wishlist: Product[];
   recentlyViewed: string[];
   orders: Order[];
+  bannerImages: {
+    spectrum: string;
+    essential: string;
+    accessories: string;
+  };
   addToCart: (product: Product, size: string) => void;
   removeFromCart: (id: string, size: string) => void;
   clearCart: () => void;
@@ -19,6 +24,7 @@ interface AppContextType {
   updateProduct: (product: Product) => void;
   deleteProduct: (id: string) => void;
   updateOrderStatus: (orderId: string, status: Order['status']) => void;
+  updateBannerImages: (images: { spectrum: string; essential: string; accessories: string }) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -31,6 +37,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error("Failed to load products from localStorage:", e);
       return initialProducts;
+    }
+  });
+  const [bannerImages, setBannerImages] = useState(() => {
+    try {
+      const saved = localStorage.getItem('prism_banner_images');
+      return saved ? JSON.parse(saved) : {
+        spectrum: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=1200',
+        essential: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=800',
+        accessories: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&q=80&w=800'
+      };
+    } catch (e) {
+      return {
+        spectrum: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=1200',
+        essential: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=800',
+        accessories: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&q=80&w=800'
+      };
     }
   });
   const [cart, setCart] = useState<CartItem[]>(() => {
@@ -112,6 +134,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [orders]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('prism_banner_images', JSON.stringify(bannerImages));
+    } catch (e) {
+      console.error("Failed to save banner images:", e);
+    }
+  }, [bannerImages]);
+
   const addToCart = useCallback((product: Product, size: string) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id && item.selectedSize === size);
@@ -163,13 +193,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
   }, []);
 
+  const updateBannerImages = useCallback((images: { spectrum: string; essential: string; accessories: string }) => {
+    setBannerImages(images);
+  }, []);
+
   return (
     <AppContext.Provider value={{
-      products, cart, wishlist, recentlyViewed, orders,
+      products, cart, wishlist, recentlyViewed, orders, bannerImages,
       addToCart, removeFromCart, clearCart,
       toggleWishlist, isInWishlist, addToRecentlyViewed,
       addOrder, addProduct, updateProduct, deleteProduct,
-      updateOrderStatus
+      updateOrderStatus, updateBannerImages
     }}>
       {children}
     </AppContext.Provider>
