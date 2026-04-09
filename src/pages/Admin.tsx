@@ -302,7 +302,7 @@ export default function Admin() {
               exit={{ opacity: 0, x: 20 }}
               className="grid grid-cols-1 gap-6"
             >
-              {products.map(product => (
+              {[...products].sort((a, b) => b.id.localeCompare(a.id)).map(product => (
                 <div key={product.id} className="glass p-6 rounded-3xl">
                   {editingId === product.id ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

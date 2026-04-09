@@ -293,30 +293,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const addProduct = useCallback(async (product: Product) => {
     const path = `products/${product.id}`;
+    // Optimistic update: add to local state immediately
+    setProducts(prev => [product, ...prev]);
+    
     try {
       const { id, ...data } = product;
-      // Use setDoc with the provided ID to ensure consistency between client and server
       await setDoc(doc(db, 'products', id), data);
     } catch (error) {
+      // Rollback on error
+      setProducts(prev => prev.filter(p => p.id !== product.id));
       handleFirestoreError(error, OperationType.CREATE, path);
     }
   }, []);
 
   const updateProduct = useCallback(async (product: Product) => {
     const path = `products/${product.id}`;
+    // Optimistic update: update local state immediately
+    setProducts(prev => prev.map(p => p.id === product.id ? product : p));
+    
     try {
       const { id, ...data } = product;
       await setDoc(doc(db, 'products', id), data, { merge: true });
     } catch (error) {
+      // Rollback on error (this is tricky without previous state, but we'll let onSnapshot fix it)
       handleFirestoreError(error, OperationType.UPDATE, path);
     }
   }, []);
 
   const deleteProduct = useCallback(async (id: string) => {
     const path = `products/${id}`;
+    // Optimistic update: remove from local state immediately
+    setProducts(prev => prev.filter(p => p.id !== id));
+    
     try {
       await deleteDoc(doc(db, 'products', id));
     } catch (error) {
+      // Rollback on error (onSnapshot will eventually restore it if it still exists)
       handleFirestoreError(error, OperationType.DELETE, path);
     }
   }, []);
