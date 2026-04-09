@@ -3,12 +3,13 @@ import { useApp } from '../AppContext';
 import { motion, Reorder, AnimatePresence } from 'motion/react';
 import { Plus, Edit, Trash2, Save, X, Image as ImageIcon, Tag, DollarSign, GripVertical, LogIn, LogOut } from 'lucide-react';
 import { formatPrice, compressImage } from '../lib/utils';
-import { auth, googleProvider } from '../firebase';
-import { signInWithPopup, signOut } from 'firebase/auth';
+import { auth } from '../firebase';
+import { signInAnonymously, signOut } from 'firebase/auth';
 
 export default function Admin() {
   const { products, loading, addProduct, updateProduct, deleteProduct, orders, updateOrderStatus, bannerImages, updateBannerImages } = useApp();
-  const [user, setUser] = useState(auth.currentUser);
+  const [isAuthorized, setIsAuthorized] = useState(() => localStorage.getItem('prism_admin_auth') === 'true');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>(null);
@@ -19,37 +20,31 @@ export default function Admin() {
   const [bannerForm, setBannerForm] = useState(bannerImages);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((u) => {
-      setUser(u);
-    });
-    return () => unsubscribe();
+    // We still use anonymous auth to satisfy Firestore rules if needed, 
+    // but the UI is controlled by the password.
+    signInAnonymously(auth).catch(console.error);
   }, []);
 
-  useEffect(() => {
-    setBannerForm(bannerImages);
-  }, [bannerImages]);
-
-  const handleLogin = async () => {
+  const handleLogin = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setError('');
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (err: any) {
-      console.error('Login error:', err);
-      if (err.code === 'auth/popup-blocked') {
-        setError('Login popup was blocked by your browser. Please allow popups for this site.');
-      } else if (err.code === 'auth/unauthorized-domain') {
-        setError('This domain is not authorized for login. Please open the app in a new tab using the button in the top right.');
-      } else {
-        setError(`Login failed: ${err.message || 'Please try again.'}`);
-      }
+    
+    // In a real app, this should be an environment variable or backend check
+    const ADMIN_PASS = 'sadman2025'; 
+    
+    if (password === ADMIN_PASS) {
+      setIsAuthorized(true);
+      localStorage.setItem('prism_admin_auth', 'true');
+    } else {
+      setError('Incorrect password. Please try again.');
     }
   };
 
   const handleLogout = async () => {
+    setIsAuthorized(false);
+    localStorage.removeItem('prism_admin_auth');
     await signOut(auth);
   };
-
-  const isAdmin = user?.email === 'sadmanraisa123@gmail.com';
 
   const startEdit = (product: any) => {
     setEditingId(product.id);
@@ -178,51 +173,47 @@ export default function Admin() {
     setIsProcessing(false);
   };
 
-  if (!user || !isAdmin) {
+  if (!isAuthorized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-md w-full glass p-10 rounded-3xl text-center">
           <h1 className="text-3xl font-display font-black mb-8">ADMIN ACCESS</h1>
-          {!user ? (
-            <div className="space-y-6">
-              <p className="text-white/40 text-sm mb-6 uppercase tracking-widest">Please sign in with your admin account</p>
-              <button 
-                onClick={handleLogin} 
-                className="w-full py-4 bg-white text-black font-display font-bold rounded-2xl hover:bg-prism-mid hover:text-white transition-all flex items-center justify-center gap-3"
-              >
-                <LogIn size={20} /> Sign in with Google
-              </button>
-              
-              <div className="pt-8 border-t border-white/5">
-                <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] mb-4">Trouble logging in?</p>
-                <ul className="text-[10px] text-white/30 space-y-2 text-left list-disc pl-4">
-                  <li>Ensure popups are allowed in your browser.</li>
-                  <li>Try opening the app in a **New Tab** using the button in the top-right corner of the preview.</li>
-                  <li>Make sure you are using your admin Google account.</li>
-                </ul>
-              </div>
+          
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="relative">
+              <input 
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter Admin Password"
+                className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl px-6 text-center focus:border-prism-mid outline-none transition-all"
+                autoFocus
+              />
             </div>
-          ) : (
-            <div className="space-y-6">
-              <p className="text-red-500 text-sm mb-6 uppercase tracking-widest font-bold">Access Denied</p>
-              <p className="text-white/40 text-xs mb-8">Your account ({user.email}) does not have administrative privileges.</p>
-              <button 
-                onClick={handleLogout} 
-                className="w-full py-4 glass text-white font-display font-bold rounded-2xl hover:bg-red-500 transition-all flex items-center justify-center gap-3"
-              >
-                <LogOut size={20} /> Switch Account
-              </button>
-            </div>
-          )}
-          {error && (
-            <motion.p 
-              initial={{ opacity: 0, y: -10 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              className="text-red-500 text-xs font-bold uppercase tracking-widest mt-4"
+            
+            <button 
+              type="submit"
+              className="w-full py-4 bg-white text-black font-display font-bold rounded-2xl hover:bg-prism-mid hover:text-white transition-all flex items-center justify-center gap-3"
             >
-              {error}
-            </motion.p>
-          )}
+              <LogIn size={20} /> Enter Panel
+            </button>
+            
+            {error && (
+              <motion.p 
+                initial={{ opacity: 0, y: -10 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                className="text-red-500 text-xs font-bold uppercase tracking-widest mt-4"
+              >
+                {error}
+              </motion.p>
+            )}
+          </form>
+
+          <div className="pt-8 mt-8 border-t border-white/5">
+            <p className="text-[10px] text-white/20 uppercase tracking-[0.2em]">
+              Restricted Area
+            </p>
+          </div>
         </motion.div>
       </div>
     );
@@ -235,7 +226,7 @@ export default function Admin() {
           <div className="flex items-center gap-6">
             <div>
               <h1 className="text-5xl font-display font-black uppercase">Admin Panel</h1>
-              <p className="text-white/40 font-mono text-sm tracking-widest mt-2">Logged in as {user.email}</p>
+              <p className="text-white/40 font-mono text-sm tracking-widest mt-2">Authorized Access</p>
             </div>
             <button 
               onClick={handleLogout}
