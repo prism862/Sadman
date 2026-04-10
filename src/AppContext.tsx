@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { Product, CartItem, Order } from './types';
+import { Product, CartItem, Order, SiteSettings } from './types';
 import { initialProducts } from './data/initialProducts';
 
 interface AppContextType {
@@ -8,11 +8,7 @@ interface AppContextType {
   wishlist: Product[];
   recentlyViewed: string[];
   orders: Order[];
-  bannerImages: {
-    spectrum: string;
-    essential: string;
-    accessories: string;
-  };
+  settings: SiteSettings;
   addToCart: (product: Product, size: string) => void;
   removeFromCart: (id: string, size: string) => void;
   clearCart: () => void;
@@ -24,17 +20,24 @@ interface AppContextType {
   updateProduct: (product: Product) => void;
   deleteProduct: (id: string) => void;
   updateOrderStatus: (orderId: string, status: Order['status']) => void;
-  updateBannerImages: (images: { spectrum: string; essential: string; accessories: string }) => void;
+  updateSettings: (settings: SiteSettings) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
-  const [bannerImages, setBannerImages] = useState({
-    spectrum: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=1200',
-    essential: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=800',
-    accessories: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&q=80&w=800'
+  const [settings, setSettings] = useState<SiteSettings>({
+    bannerImages: {
+      spectrum: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=1200',
+      essential: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=800',
+      accessories: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&q=80&w=800'
+    },
+    deliveryFees: {
+      inside: 80,
+      outside: 120
+    },
+    adminPassword: 'sadman2025'
   });
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
@@ -78,24 +81,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         const prods = await prodRes.json();
         const ords = await orderRes.json();
-        const settings = await settingsRes.json();
+        const settingsData = await settingsRes.json();
         
         if (prods && Array.isArray(prods) && prods.length > 0) {
           setProducts(prods);
         } else {
+          console.log("No products found on server, seeding with initialProducts");
           setProducts(initialProducts);
+          // Seed the server if it's empty
+          fetch('/api/products', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(initialProducts)
+          }).catch(err => console.error("Failed to seed products:", err));
         }
         
         if (ords && Array.isArray(ords)) {
           setOrders(ords);
         }
         
-        if (settings && typeof settings === 'object' && Object.keys(settings).length > 0) {
-          setBannerImages(settings);
+        if (settingsData && typeof settingsData === 'object' && Object.keys(settingsData).length > 0) {
+          setSettings(prev => ({
+            ...prev,
+            ...settingsData,
+            bannerImages: {
+              ...prev.bannerImages,
+              ...(settingsData.bannerImages || {})
+            },
+            deliveryFees: {
+              ...prev.deliveryFees,
+              ...(settingsData.deliveryFees || {})
+            }
+          }));
         }
       } catch (e) {
         console.error("Failed to fetch data:", e);
-        setProducts(initialProducts);
+        // Don't overwrite products if we already have some (though on mount we don't)
+        setProducts(prev => prev.length > 0 ? prev : initialProducts);
       }
     };
     fetchData();
@@ -153,97 +175,88 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const addOrder = useCallback(async (order: Order) => {
-    const newOrders = [order, ...orders];
-    setOrders(newOrders);
+  const saveProductsToServer = async (newProducts: Product[]) => {
     try {
-      await fetch('/api/orders', {
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProducts)
+      });
+      if (!res.ok) throw new Error("Failed to save to server");
+    } catch (e) {
+      console.error("Failed to save products:", e);
+    }
+  };
+
+  const addOrder = useCallback(async (order: Order) => {
+    setOrders(prev => {
+      const newOrders = [order, ...prev];
+      fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newOrders)
-      });
-      clearCart();
-    } catch (e) {
-      console.error("Failed to save order:", e);
-    }
-  }, [orders, clearCart]);
+      }).catch(e => console.error("Failed to save order:", e));
+      return newOrders;
+    });
+    clearCart();
+  }, [clearCart]);
 
   const addProduct = useCallback(async (product: Product) => {
-    const newProducts = [...products, product];
-    setProducts(newProducts);
-    try {
-      await fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newProducts)
-      });
-    } catch (e) {
-      console.error("Failed to save product:", e);
-    }
-  }, [products]);
+    setProducts(prev => {
+      const newProducts = [...prev, product];
+      saveProductsToServer(newProducts);
+      return newProducts;
+    });
+  }, []);
 
   const updateProduct = useCallback(async (product: Product) => {
-    const newProducts = products.map(p => p.id === product.id ? product : p);
-    setProducts(newProducts);
-    try {
-      await fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newProducts)
-      });
-    } catch (e) {
-      console.error("Failed to update product:", e);
-    }
-  }, [products]);
+    setProducts(prev => {
+      const newProducts = prev.map(p => p.id === product.id ? product : p);
+      saveProductsToServer(newProducts);
+      return newProducts;
+    });
+  }, []);
 
   const deleteProduct = useCallback(async (id: string) => {
-    const newProducts = products.filter(p => p.id !== id);
-    setProducts(newProducts);
-    try {
-      await fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newProducts)
-      });
-    } catch (e) {
-      console.error("Failed to delete product:", e);
-    }
-  }, [products]);
+    setProducts(prev => {
+      const newProducts = prev.filter(p => p.id !== id);
+      saveProductsToServer(newProducts);
+      return newProducts;
+    });
+  }, []);
 
   const updateOrderStatus = useCallback(async (orderId: string, status: Order['status']) => {
-    const newOrders = orders.map(o => o.id === orderId ? { ...o, status } : o);
-    setOrders(newOrders);
-    try {
-      await fetch('/api/orders', {
+    setOrders(prev => {
+      const newOrders = prev.map(o => o.id === orderId ? { ...o, status } : o);
+      fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newOrders)
-      });
-    } catch (e) {
-      console.error("Failed to update order status:", e);
-    }
-  }, [orders]);
+      }).catch(e => console.error("Failed to update order status:", e));
+      return newOrders;
+    });
+  }, []);
 
-  const updateBannerImages = useCallback(async (images: { spectrum: string; essential: string; accessories: string }) => {
-    setBannerImages(images);
+  const updateSettings = useCallback(async (newSettings: SiteSettings) => {
+    setSettings(newSettings);
     try {
       await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(images)
+        body: JSON.stringify(newSettings)
       });
     } catch (e) {
-      console.error("Failed to update banner images:", e);
+      console.error("Failed to update settings:", e);
     }
   }, []);
 
   return (
     <AppContext.Provider value={{
-      products, cart, wishlist, recentlyViewed, orders, bannerImages,
+      products, cart, wishlist, recentlyViewed, orders, settings,
       addToCart, removeFromCart, clearCart,
       toggleWishlist, isInWishlist, addToRecentlyViewed,
       addOrder, addProduct, updateProduct, deleteProduct,
-      updateOrderStatus, updateBannerImages
+      updateOrderStatus, updateSettings
     }}>
       {children}
     </AppContext.Provider>

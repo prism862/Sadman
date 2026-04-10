@@ -33,3 +33,18 @@ export interface Order {
   date: string;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'refunded';
 }
+
+export interface SiteSettings {
+  bannerImages: {
+    spectrum: string;
+    essential: string;
+    accessories: string;
+  };
+  deliveryFees: {
+    inside: number;
+    outside: number;
+  };
+  adminPassword?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+}

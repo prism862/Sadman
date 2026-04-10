@@ -10,7 +10,7 @@ import { fadeInUp, staggerContainer, staggerItem, hoverScale } from '../constant
 
 export default function Checkout() {
   const navigate = useNavigate();
-  const { cart, addOrder } = useApp();
+  const { cart, addOrder, settings } = useApp();
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -23,7 +23,7 @@ export default function Checkout() {
     return acc + price * item.quantity;
   }, 0);
 
-  const deliveryFee = deliveryArea === 'Inside Chittagong' ? 80 : 120;
+  const deliveryFee = deliveryArea === 'Inside Chittagong' ? settings.deliveryFees.inside : settings.deliveryFees.outside;
   const total = subtotal + deliveryFee;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -136,7 +136,7 @@ export default function Checkout() {
                     />
                   )}
                   <p className="text-xs font-bold uppercase tracking-tight relative z-10">Inside Chittagong</p>
-                  <p className="text-[10px] text-white/40 relative z-10">80 Taka</p>
+                  <p className="text-[10px] text-white/40 relative z-10">{settings.deliveryFees.inside} Taka</p>
                 </motion.button>
                 <motion.button
                   type="button"
@@ -154,7 +154,7 @@ export default function Checkout() {
                     />
                   )}
                   <p className="text-xs font-bold uppercase tracking-tight relative z-10">Outside Chittagong</p>
-                  <p className="text-[10px] text-white/40 relative z-10">120 Taka</p>
+                  <p className="text-[10px] text-white/40 relative z-10">{settings.deliveryFees.outside} Taka</p>
                 </motion.button>
               </div>
             </div>

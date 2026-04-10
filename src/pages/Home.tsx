@@ -7,7 +7,8 @@ import SmoothImage from '../components/SmoothImage';
 import { useApp } from '../AppContext';
 
 export default function Home() {
-  const { bannerImages } = useApp();
+  const { settings } = useApp();
+  const { bannerImages } = settings;
 
   return (
     <div className="relative min-h-screen pt-20 overflow-hidden">

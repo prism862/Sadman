@@ -13,17 +13,36 @@ const __dirname = path.dirname(__filename);
 
 const DB_PATH = path.join(process.cwd(), "db");
 
-async function readDb(file: string) {
+async function ensureDbDir() {
   try {
-    const data = await fs.readFile(path.join(DB_PATH, file), "utf-8");
+    await fs.mkdir(DB_PATH, { recursive: true });
+  } catch (e) {
+    console.error("Failed to create DB directory:", e);
+  }
+}
+
+async function readDb(file: string) {
+  await ensureDbDir();
+  try {
+    const filePath = path.join(DB_PATH, file);
+    const data = await fs.readFile(filePath, "utf-8");
     return JSON.parse(data);
   } catch (e) {
+    console.error(`Error reading ${file}:`, e);
     return null;
   }
 }
 
 async function writeDb(file: string, data: any) {
-  await fs.writeFile(path.join(DB_PATH, file), JSON.stringify(data, null, 2), "utf-8");
+  await ensureDbDir();
+  try {
+    const filePath = path.join(DB_PATH, file);
+    await fs.writeFile(filePath, JSON.stringify(data, null, 2), "utf-8");
+    console.log(`Successfully wrote to ${file}`);
+  } catch (e) {
+    console.error(`Error writing to ${file}:`, e);
+    throw e;
+  }
 }
 
 async function startServer() {
@@ -34,35 +53,57 @@ async function startServer() {
 
   // Products API
   app.get("/api/products", async (req, res) => {
+    console.log("GET /api/products");
     const products = await readDb("products.json");
     res.json(products || []);
   });
 
   app.post("/api/products", async (req, res) => {
-    await writeDb("products.json", req.body);
-    res.json({ success: true });
+    console.log("POST /api/products", Array.isArray(req.body) ? `Array of ${req.body.length}` : typeof req.body);
+    try {
+      if (!Array.isArray(req.body)) {
+        throw new Error("Invalid data format: expected array");
+      }
+      await writeDb("products.json", req.body);
+      res.json({ success: true });
+    } catch (e) {
+      console.error("Failed to save products:", e);
+      res.status(500).json({ error: e instanceof Error ? e.message : "Failed to save products" });
+    }
   });
 
   // Orders API
   app.get("/api/orders", async (req, res) => {
+    console.log("GET /api/orders");
     const orders = await readDb("orders.json");
     res.json(orders || []);
   });
 
   app.post("/api/orders", async (req, res) => {
-    await writeDb("orders.json", req.body);
-    res.json({ success: true });
+    console.log("POST /api/orders");
+    try {
+      await writeDb("orders.json", req.body);
+      res.json({ success: true });
+    } catch (e) {
+      res.status(500).json({ error: "Failed to save orders" });
+    }
   });
 
   // Settings API
   app.get("/api/settings", async (req, res) => {
+    console.log("GET /api/settings");
     const settings = await readDb("settings.json");
     res.json(settings || {});
   });
 
   app.post("/api/settings", async (req, res) => {
-    await writeDb("settings.json", req.body);
-    res.json({ success: true });
+    console.log("POST /api/settings");
+    try {
+      await writeDb("settings.json", req.body);
+      res.json({ success: true });
+    } catch (e) {
+      res.status(500).json({ error: "Failed to save settings" });
+    }
   });
 
   // Root API Route

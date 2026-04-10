@@ -5,7 +5,7 @@ import { Plus, Edit, Trash2, Save, X, Image as ImageIcon, Tag, DollarSign, GripV
 import { formatPrice, compressImage } from '../lib/utils';
 
 export default function Admin() {
-  const { products, addProduct, updateProduct, deleteProduct, orders, updateOrderStatus, bannerImages, updateBannerImages } = useApp();
+  const { products, addProduct, updateProduct, deleteProduct, orders, updateOrderStatus, settings, updateSettings } = useApp();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -15,15 +15,15 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'settings'>('orders');
   const [storageWarning, setStorageWarning] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [bannerForm, setBannerForm] = useState(bannerImages);
+  const [settingsForm, setSettingsForm] = useState(settings);
 
   useEffect(() => {
-    setBannerForm(bannerImages);
-  }, [bannerImages]);
+    setSettingsForm(settings);
+  }, [settings]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'sadman2025') {
+    if (password === (settings.adminPassword || 'sadman2025')) {
       setIsAuthenticated(true);
       setError('');
     } else {
@@ -147,7 +147,7 @@ export default function Admin() {
     setIsProcessing(false);
   };
 
-  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>, key: keyof typeof bannerImages) => {
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>, key: keyof typeof settings.bannerImages) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -159,7 +159,13 @@ export default function Admin() {
     });
 
     const compressed = await compressImage(base64, 1200, 0.7);
-    setBannerForm(prev => ({ ...prev, [key]: compressed }));
+    setSettingsForm(prev => ({
+      ...prev,
+      bannerImages: {
+        ...prev.bannerImages,
+        [key]: compressed
+      }
+    }));
     setIsProcessing(false);
   };
 
@@ -631,59 +637,132 @@ export default function Admin() {
               className="max-w-4xl mx-auto space-y-8"
             >
               <div className="glass p-8 rounded-[2.5rem] border border-white/5">
-                <h2 className="text-2xl font-display font-bold mb-8 uppercase tracking-tight">Banner Images</h2>
-                
-                <div className="space-y-8">
-                  {[
-                    { id: 'spectrum', label: 'Spectrum Series Banner' },
-                    { id: 'essential', label: 'Essential Prism Banner' },
-                    { id: 'accessories', label: 'Accessories Banner' }
-                  ].map((banner) => (
-                    <div key={banner.id} className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center p-6 bg-white/5 rounded-3xl border border-white/5">
-                      <div>
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-4 block">{banner.label}</label>
-                        <div className="space-y-4">
-                          <label className={`group cursor-pointer relative ${isProcessing ? 'opacity-50 cursor-wait' : ''}`}>
-                            <div className="w-full py-6 glass border-2 border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center gap-2 group-hover:border-prism-mid/50 group-hover:bg-prism-mid/5 transition-all">
-                              <ImageIcon size={20} className="text-white/40 group-hover:text-prism-mid transition-colors" />
-                              <p className="text-[10px] font-bold uppercase tracking-widest">
-                                {isProcessing ? 'Processing...' : 'Upload New Image'}
-                              </p>
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-2xl font-display font-bold uppercase tracking-tight">Site Settings</h2>
+                  <button 
+                    onClick={() => updateSettings(settingsForm)}
+                    className="px-8 py-3 bg-white text-black font-display font-bold rounded-xl hover:bg-prism-mid hover:text-white transition-all flex items-center gap-2 text-xs"
+                  >
+                    <Save size={16} /> Save All Settings
+                  </button>
+                </div>
+
+                <div className="space-y-12">
+                  {/* Banner Images Section */}
+                  <section>
+                    <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-prism-mid mb-6">Banner Visuals</h3>
+                    <div className="space-y-6">
+                      {[
+                        { id: 'spectrum', label: 'Spectrum Series Banner' },
+                        { id: 'essential', label: 'Essential Prism Banner' },
+                        { id: 'accessories', label: 'Accessories Banner' }
+                      ].map((banner) => (
+                        <div key={banner.id} className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center p-6 bg-white/5 rounded-3xl border border-white/5">
+                          <div>
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-4 block">{banner.label}</label>
+                            <div className="space-y-4">
+                              <label className={`group cursor-pointer relative ${isProcessing ? 'opacity-50 cursor-wait' : ''}`}>
+                                <div className="w-full py-6 glass border-2 border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center gap-2 group-hover:border-prism-mid/50 group-hover:bg-prism-mid/5 transition-all">
+                                  <ImageIcon size={20} className="text-white/40 group-hover:text-prism-mid transition-colors" />
+                                  <p className="text-[10px] font-bold uppercase tracking-widest">
+                                    {isProcessing ? 'Processing...' : 'Upload New Image'}
+                                  </p>
+                                </div>
+                                <input 
+                                  type="file" 
+                                  accept="image/*" 
+                                  className="hidden" 
+                                  onChange={(e) => handleBannerUpload(e, banner.id as any)}
+                                  disabled={isProcessing}
+                                />
+                              </label>
+                              <input 
+                                value={(settingsForm.bannerImages as any)[banner.id] || ''} 
+                                onChange={e => setSettingsForm({ 
+                                  ...settingsForm, 
+                                  bannerImages: { ...settingsForm.bannerImages, [banner.id]: e.target.value } 
+                                })}
+                                className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-[10px] font-mono"
+                                placeholder="Or paste image URL"
+                              />
                             </div>
-                            <input 
-                              type="file" 
-                              accept="image/*" 
-                              className="hidden" 
-                              onChange={(e) => handleBannerUpload(e, banner.id as any)}
-                              disabled={isProcessing}
+                          </div>
+                          <div className="relative aspect-video rounded-2xl overflow-hidden border border-white/10">
+                            <img 
+                              src={(settingsForm.bannerImages as any)[banner.id]} 
+                              className="w-full h-full object-cover" 
+                              referrerPolicy="no-referrer"
                             />
-                          </label>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  {/* Delivery & Contact Section */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <section className="space-y-6">
+                      <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-prism-mid">Delivery Fees</h3>
+                      <div className="glass p-6 rounded-3xl space-y-4">
+                        <div>
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2 block">Inside Chittagong</label>
+                          <div className="relative">
+                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" size={14} />
+                            <input 
+                              type="number"
+                              value={settingsForm.deliveryFees.inside}
+                              onChange={e => setSettingsForm({
+                                ...settingsForm,
+                                deliveryFees: { ...settingsForm.deliveryFees, inside: parseInt(e.target.value) || 0 }
+                              })}
+                              className="w-full bg-white/5 border border-white/10 p-3 pl-10 rounded-xl text-sm font-bold"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2 block">Outside Chittagong</label>
+                          <div className="relative">
+                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" size={14} />
+                            <input 
+                              type="number"
+                              value={settingsForm.deliveryFees.outside}
+                              onChange={e => setSettingsForm({
+                                ...settingsForm,
+                                deliveryFees: { ...settingsForm.deliveryFees, outside: parseInt(e.target.value) || 0 }
+                              })}
+                              className="w-full bg-white/5 border border-white/10 p-3 pl-10 rounded-xl text-sm font-bold"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section className="space-y-6">
+                      <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-prism-mid">Security & Contact</h3>
+                      <div className="glass p-6 rounded-3xl space-y-4">
+                        <div>
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2 block">Admin Password</label>
                           <input 
-                            value={(bannerForm as any)[banner.id] || ''} 
-                            onChange={e => setBannerForm({ ...bannerForm, [banner.id]: e.target.value })}
-                            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-[10px] font-mono"
-                            placeholder="Or paste image URL"
+                            type="text"
+                            value={settingsForm.adminPassword || ''}
+                            onChange={e => setSettingsForm({ ...settingsForm, adminPassword: e.target.value })}
+                            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm font-mono"
+                            placeholder="sadman2025"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2 block">Contact Email</label>
+                          <input 
+                            type="email"
+                            value={settingsForm.contactEmail || ''}
+                            onChange={e => setSettingsForm({ ...settingsForm, contactEmail: e.target.value })}
+                            className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm"
+                            placeholder="support@prism.com"
                           />
                         </div>
                       </div>
-                      <div className="relative aspect-video rounded-2xl overflow-hidden border border-white/10">
-                        <img 
-                          src={(bannerForm as any)[banner.id]} 
-                          className="w-full h-full object-cover" 
-                          referrerPolicy="no-referrer"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-12 flex justify-end">
-                  <button 
-                    onClick={() => updateBannerImages(bannerForm)}
-                    className="px-12 py-4 bg-white text-black font-display font-bold rounded-2xl hover:bg-prism-mid hover:text-white transition-all flex items-center gap-3"
-                  >
-                    <Save size={20} /> Save Site Settings
-                  </button>
+                    </section>
+                  </div>
                 </div>
               </div>
             </motion.div>
