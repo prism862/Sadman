@@ -1,69 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Product, CartItem, Order } from './types';
 import { initialProducts } from './data/initialProducts';
-import { db, auth } from './lib/firebase';
-import { 
-  collection, 
-  onSnapshot, 
-  doc, 
-  setDoc, 
-  deleteDoc, 
-  updateDoc,
-  query,
-  orderBy
-} from 'firebase/firestore';
-import { onAuthStateChanged, User } from 'firebase/auth';
-
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId: string | undefined;
-    email: string | null | undefined;
-    emailVerified: boolean | undefined;
-    isAnonymous: boolean | undefined;
-    tenantId: string | null | undefined;
-    providerInfo: {
-      providerId: string;
-      displayName: string | null;
-      email: string | null;
-      photoUrl: string | null;
-    }[];
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
-    },
-    operationType,
-    path
-  }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
 
 interface AppContextType {
   products: Product[];
@@ -76,8 +13,6 @@ interface AppContextType {
     essential: string;
     accessories: string;
   };
-  user: User | null;
-  isAuthReady: boolean;
   addToCart: (product: Product, size: string) => void;
   removeFromCart: (id: string, size: string) => void;
   clearCart: () => void;
@@ -96,8 +31,6 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
-  const [user, setUser] = useState<User | null>(null);
-  const [isAuthReady, setIsAuthReady] = useState(false);
   const [bannerImages, setBannerImages] = useState({
     spectrum: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=1200',
     essential: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&q=80&w=800',
@@ -129,66 +62,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
   const [orders, setOrders] = useState<Order[]>([]);
 
-  // Auth Listener
+  // Fetch initial data
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setIsAuthReady(true);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Products Listener
-  useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'products'), (snapshot) => {
-      const prods = snapshot.docs.map(doc => doc.data() as Product);
-      if (prods.length === 0) {
-        // Only seed if the current user is the authorized admin
-        if (auth.currentUser?.email === 'sadmanraisa123@gmail.com') {
-          initialProducts.forEach(async (p) => {
-            try {
-              await setDoc(doc(db, 'products', p.id), p);
-            } catch (e) {
-              console.error("Failed to seed product:", e);
-            }
-          });
+    const fetchData = async () => {
+      try {
+        const [prodRes, orderRes, settingsRes] = await Promise.all([
+          fetch('/api/products'),
+          fetch('/api/orders'),
+          fetch('/api/settings')
+        ]);
+        
+        if (!prodRes.ok || !orderRes.ok || !settingsRes.ok) {
+          throw new Error(`HTTP error! status: ${prodRes.status}, ${orderRes.status}, ${settingsRes.status}`);
         }
-      } else {
-        setProducts(prods);
-      }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'products');
-    });
-    return () => unsubscribe();
-  }, []);
 
-  // Orders Listener
-  useEffect(() => {
-    if (!user) {
-      setOrders([]);
-      return;
-    }
-    const unsubscribe = onSnapshot(query(collection(db, 'orders'), orderBy('date', 'desc')), (snapshot) => {
-      setOrders(snapshot.docs.map(doc => doc.data() as Order));
-    }, (error) => {
-      // Only log if it's not a permission error (since non-admins won't have access)
-      if (!error.message.includes('permission-denied')) {
-        handleFirestoreError(error, OperationType.LIST, 'orders');
+        const prods = await prodRes.json();
+        const ords = await orderRes.json();
+        const settings = await settingsRes.json();
+        
+        if (prods && Array.isArray(prods) && prods.length > 0) {
+          setProducts(prods);
+        } else {
+          setProducts(initialProducts);
+        }
+        
+        if (ords && Array.isArray(ords)) {
+          setOrders(ords);
+        }
+        
+        if (settings && typeof settings === 'object' && Object.keys(settings).length > 0) {
+          setBannerImages(settings);
+        }
+      } catch (e) {
+        console.error("Failed to fetch data:", e);
+        setProducts(initialProducts);
       }
-    });
-    return () => unsubscribe();
-  }, [user]);
-
-  // Settings Listener
-  useEffect(() => {
-    const unsubscribe = onSnapshot(doc(db, 'settings', 'banners'), (snapshot) => {
-      if (snapshot.exists()) {
-        setBannerImages(snapshot.data() as any);
-      }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'settings/banners');
-    });
-    return () => unsubscribe();
+    };
+    fetchData();
   }, []);
 
   // LocalStorage sync for client-side only state
@@ -244,57 +154,92 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addOrder = useCallback(async (order: Order) => {
+    const newOrders = [order, ...orders];
+    setOrders(newOrders);
     try {
-      await setDoc(doc(db, 'orders', order.id), order);
+      await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newOrders)
+      });
       clearCart();
     } catch (e) {
-      handleFirestoreError(e, OperationType.CREATE, `orders/${order.id}`);
+      console.error("Failed to save order:", e);
     }
-  }, [clearCart]);
+  }, [orders, clearCart]);
 
   const addProduct = useCallback(async (product: Product) => {
+    const newProducts = [...products, product];
+    setProducts(newProducts);
     try {
-      await setDoc(doc(db, 'products', product.id), product);
+      await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProducts)
+      });
     } catch (e) {
-      handleFirestoreError(e, OperationType.CREATE, `products/${product.id}`);
+      console.error("Failed to save product:", e);
     }
-  }, []);
+  }, [products]);
 
   const updateProduct = useCallback(async (product: Product) => {
+    const newProducts = products.map(p => p.id === product.id ? product : p);
+    setProducts(newProducts);
     try {
-      await setDoc(doc(db, 'products', product.id), product);
+      await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProducts)
+      });
     } catch (e) {
-      handleFirestoreError(e, OperationType.UPDATE, `products/${product.id}`);
+      console.error("Failed to update product:", e);
     }
-  }, []);
+  }, [products]);
 
   const deleteProduct = useCallback(async (id: string) => {
+    const newProducts = products.filter(p => p.id !== id);
+    setProducts(newProducts);
     try {
-      await deleteDoc(doc(db, 'products', id));
+      await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProducts)
+      });
     } catch (e) {
-      handleFirestoreError(e, OperationType.DELETE, `products/${id}`);
+      console.error("Failed to delete product:", e);
     }
-  }, []);
+  }, [products]);
 
   const updateOrderStatus = useCallback(async (orderId: string, status: Order['status']) => {
+    const newOrders = orders.map(o => o.id === orderId ? { ...o, status } : o);
+    setOrders(newOrders);
     try {
-      await updateDoc(doc(db, 'orders', orderId), { status });
+      await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newOrders)
+      });
     } catch (e) {
-      handleFirestoreError(e, OperationType.UPDATE, `orders/${orderId}`);
+      console.error("Failed to update order status:", e);
     }
-  }, []);
+  }, [orders]);
 
   const updateBannerImages = useCallback(async (images: { spectrum: string; essential: string; accessories: string }) => {
+    setBannerImages(images);
     try {
-      await setDoc(doc(db, 'settings', 'banners'), images);
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(images)
+      });
     } catch (e) {
-      handleFirestoreError(e, OperationType.UPDATE, 'settings/banners');
+      console.error("Failed to update banner images:", e);
     }
   }, []);
 
   return (
     <AppContext.Provider value={{
-      products, cart, wishlist, recentlyViewed, orders, bannerImages, user, isAuthReady,
+      products, cart, wishlist, recentlyViewed, orders, bannerImages,
       addToCart, removeFromCart, clearCart,
       toggleWishlist, isInWishlist, addToRecentlyViewed,
       addOrder, addProduct, updateProduct, deleteProduct,

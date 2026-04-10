@@ -4,17 +4,66 @@ import path from "path";
 import { fileURLToPath } from "url";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import fs from "fs/promises";
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const DB_PATH = path.join(process.cwd(), "db");
+
+async function readDb(file: string) {
+  try {
+    const data = await fs.readFile(path.join(DB_PATH, file), "utf-8");
+    return JSON.parse(data);
+  } catch (e) {
+    return null;
+  }
+}
+
+async function writeDb(file: string, data: any) {
+  await fs.writeFile(path.join(DB_PATH, file), JSON.stringify(data, null, 2), "utf-8");
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: '50mb' }));
+
+  // Products API
+  app.get("/api/products", async (req, res) => {
+    const products = await readDb("products.json");
+    res.json(products || []);
+  });
+
+  app.post("/api/products", async (req, res) => {
+    await writeDb("products.json", req.body);
+    res.json({ success: true });
+  });
+
+  // Orders API
+  app.get("/api/orders", async (req, res) => {
+    const orders = await readDb("orders.json");
+    res.json(orders || []);
+  });
+
+  app.post("/api/orders", async (req, res) => {
+    await writeDb("orders.json", req.body);
+    res.json({ success: true });
+  });
+
+  // Settings API
+  app.get("/api/settings", async (req, res) => {
+    const settings = await readDb("settings.json");
+    res.json(settings || {});
+  });
+
+  app.post("/api/settings", async (req, res) => {
+    await writeDb("settings.json", req.body);
+    res.json({ success: true });
+  });
 
   // Root API Route
   app.get("/api", async (req, res) => {

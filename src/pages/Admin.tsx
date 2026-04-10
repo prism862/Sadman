@@ -3,11 +3,9 @@ import { useApp } from '../AppContext';
 import { motion, Reorder, AnimatePresence } from 'motion/react';
 import { Plus, Edit, Trash2, Save, X, Image as ImageIcon, Tag, DollarSign, GripVertical, LogIn, LogOut } from 'lucide-react';
 import { formatPrice, compressImage } from '../lib/utils';
-import { auth } from '../lib/firebase';
-import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 
 export default function Admin() {
-  const { products, addProduct, updateProduct, deleteProduct, orders, updateOrderStatus, bannerImages, updateBannerImages, user } = useApp();
+  const { products, addProduct, updateProduct, deleteProduct, orders, updateOrderStatus, bannerImages, updateBannerImages } = useApp();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -18,8 +16,6 @@ export default function Admin() {
   const [storageWarning, setStorageWarning] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [bannerForm, setBannerForm] = useState(bannerImages);
-
-  const isAdmin = user?.email === 'sadmanraisa123@gmail.com';
 
   useEffect(() => {
     setBannerForm(bannerImages);
@@ -35,17 +31,9 @@ export default function Admin() {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error("Login failed:", error);
-    }
-  };
-
-  const handleLogout = async () => {
-    await signOut(auth);
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setPassword('');
   };
 
   const startEdit = (product: any) => {
@@ -204,30 +192,6 @@ export default function Admin() {
               Unlock Panel
             </button>
           </form>
-        </motion.div>
-      </div>
-    );
-  }
-
-  if (!user || !isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black px-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-md w-full glass p-10 rounded-3xl text-center">
-          <h1 className="text-3xl font-display font-black mb-4">SECURE STORAGE</h1>
-          <p className="text-white/40 text-sm mb-8 uppercase tracking-widest font-bold">Sign in with authorized email to save changes to cloud</p>
-          
-          <button 
-            onClick={handleGoogleLogin} 
-            className="w-full py-4 bg-white text-black font-display font-bold rounded-2xl hover:bg-prism-mid hover:text-white transition-all flex items-center justify-center gap-3"
-          >
-            <LogIn size={20} /> Sign in with Google
-          </button>
-          
-          {user && !isAdmin && (
-            <p className="mt-6 text-red-500 text-[10px] font-bold uppercase tracking-widest bg-red-500/10 px-4 py-2 rounded-lg border border-red-500/20">
-              Access Denied: {user.email} is not authorized.
-            </p>
-          )}
         </motion.div>
       </div>
     );
