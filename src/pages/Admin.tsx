@@ -3,10 +3,10 @@ import { useApp } from '../AppContext';
 import { motion, Reorder, AnimatePresence } from 'motion/react';
 import { Plus, Edit, Trash2, Save, X, Image as ImageIcon, Tag, DollarSign, GripVertical, LogIn, LogOut } from 'lucide-react';
 import { formatPrice, compressImage } from '../lib/utils';
+import { signInWithGoogle, auth } from '../firebase';
 
 export default function Admin() {
-  const { products, addProduct, updateProduct, deleteProduct, orders, updateOrderStatus, settings, updateSettings } = useApp();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { products, addProduct, updateProduct, deleteProduct, orders, updateOrderStatus, settings, updateSettings, user, isAuthReady } = useApp();
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -17,23 +17,18 @@ export default function Admin() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [settingsForm, setSettingsForm] = useState(settings);
 
+  const isAdmin = user?.email === 'sadmanraisa123@gmail.com';
+
   useEffect(() => {
     setSettingsForm(settings);
   }, [settings]);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === (settings.adminPassword || 'sadman2025')) {
-      setIsAuthenticated(true);
-      setError('');
-    } else {
-      setError('Incorrect password');
+  const handleGoogleLogin = async () => {
+    try {
+      await signInWithGoogle();
+    } catch (e) {
+      setError('Login failed');
     }
-  };
-
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setPassword('');
   };
 
   const startEdit = (product: any) => {
@@ -41,19 +36,17 @@ export default function Admin() {
     setEditForm({ ...product });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     try {
-      updateProduct(editForm);
+      await updateProduct(editForm);
       setEditingId(null);
       setStorageWarning(null);
     } catch (e) {
-      if (e instanceof Error && e.name === 'QuotaExceededError') {
-        setStorageWarning("Storage limit reached! Try using smaller images or external URLs.");
-      }
+      setStorageWarning("Failed to save. Check your connection or permissions.");
     }
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     const newProd = {
       id: Date.now().toString(),
       title: 'New Piece',
@@ -69,7 +62,7 @@ export default function Admin() {
       stockCount: 10,
       isOutOfStock: false,
     };
-    addProduct(newProd);
+    await addProduct(newProd);
     startEdit(newProd);
   };
 
@@ -106,7 +99,7 @@ export default function Admin() {
         stockCount: 10,
         isOutOfStock: false,
       };
-      addProduct(newProd);
+      await addProduct(newProd);
     }
     setIsProcessing(false);
   };
@@ -169,35 +162,33 @@ export default function Admin() {
     setIsProcessing(false);
   };
 
-  if (!isAuthenticated) {
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="w-12 h-12 border-4 border-prism-mid border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user || !isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-md w-full glass p-10 rounded-3xl text-center">
           <h1 className="text-3xl font-display font-black mb-8">ADMIN ACCESS</h1>
-          <form onSubmit={handleLogin} className="space-y-4 mb-8">
-            <input 
-              type="password" 
-              placeholder="Enter Password" 
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (error) setError('');
-              }}
-              className={`w-full px-6 py-4 bg-white/5 border rounded-2xl focus:outline-none transition-colors ${error ? 'border-red-500' : 'border-white/10 focus:border-prism-mid'}`}
-            />
-            {error && (
-              <motion.p 
-                initial={{ opacity: 0, y: -10 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                className="text-red-500 text-xs font-bold uppercase tracking-widest"
-              >
-                {error}
-              </motion.p>
-            )}
-            <button type="submit" className="w-full py-4 bg-white text-black font-display font-bold rounded-2xl hover:bg-prism-mid hover:text-white transition-all">
-              Unlock Panel
+          <div className="space-y-6">
+            <p className="text-white/40 text-sm">Please sign in with your authorized admin account to manage the store.</p>
+            <button 
+              onClick={handleGoogleLogin} 
+              className="w-full py-4 bg-white text-black font-display font-bold rounded-2xl hover:bg-prism-mid hover:text-white transition-all flex items-center justify-center gap-3"
+            >
+              <LogIn size={20} /> Sign in with Google
             </button>
-          </form>
+            {user && !isAdmin && (
+              <p className="text-red-500 text-xs font-bold uppercase tracking-widest">
+                Account {user.email} is not authorized.
+              </p>
+            )}
+          </div>
         </motion.div>
       </div>
     );
@@ -213,7 +204,7 @@ export default function Admin() {
               <p className="text-white/40 font-mono text-sm tracking-widest mt-2">Manage your spectrum</p>
             </div>
             <button 
-              onClick={handleLogout}
+              onClick={() => auth.signOut()}
               className="p-3 glass rounded-xl text-white/40 hover:text-red-500 transition-colors"
               title="Logout"
             >

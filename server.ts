@@ -51,61 +51,6 @@ async function startServer() {
 
   app.use(express.json({ limit: '50mb' }));
 
-  // Products API
-  app.get("/api/products", async (req, res) => {
-    console.log("GET /api/products");
-    const products = await readDb("products.json");
-    res.json(products || []);
-  });
-
-  app.post("/api/products", async (req, res) => {
-    console.log("POST /api/products", Array.isArray(req.body) ? `Array of ${req.body.length}` : typeof req.body);
-    try {
-      if (!Array.isArray(req.body)) {
-        throw new Error("Invalid data format: expected array");
-      }
-      await writeDb("products.json", req.body);
-      res.json({ success: true });
-    } catch (e) {
-      console.error("Failed to save products:", e);
-      res.status(500).json({ error: e instanceof Error ? e.message : "Failed to save products" });
-    }
-  });
-
-  // Orders API
-  app.get("/api/orders", async (req, res) => {
-    console.log("GET /api/orders");
-    const orders = await readDb("orders.json");
-    res.json(orders || []);
-  });
-
-  app.post("/api/orders", async (req, res) => {
-    console.log("POST /api/orders");
-    try {
-      await writeDb("orders.json", req.body);
-      res.json({ success: true });
-    } catch (e) {
-      res.status(500).json({ error: "Failed to save orders" });
-    }
-  });
-
-  // Settings API
-  app.get("/api/settings", async (req, res) => {
-    console.log("GET /api/settings");
-    const settings = await readDb("settings.json");
-    res.json(settings || {});
-  });
-
-  app.post("/api/settings", async (req, res) => {
-    console.log("POST /api/settings");
-    try {
-      await writeDb("settings.json", req.body);
-      res.json({ success: true });
-    } catch (e) {
-      res.status(500).json({ error: "Failed to save settings" });
-    }
-  });
-
   // Root API Route
   app.get("/api", async (req, res) => {
     const handler = (await import("./api/index.js")).default;
